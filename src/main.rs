@@ -39,7 +39,13 @@ struct EmulatorState {
     memory_space: [u8; MAX_MEMORY],
     timer_counter: u8,
     sound_counter: u8,
-    program_counter: usize,
+    program_counter: u16,
+}
+
+enum InstructionResult {
+    Continue,
+    Terminate,
+    Jump(u16),
 }
 
 fn main() {
@@ -49,7 +55,7 @@ fn main() {
         memory_space: [0_u8; MAX_MEMORY],
         timer_counter: 0_u8,
         sound_counter: 0_u8,
-        program_counter: 0_usize,
+        program_counter: 0_u16,
     };
 
     // based on 4kb variant (hence 3215 bytes) (wait shouldn't it be 3583???)
@@ -73,12 +79,13 @@ fn main() {
     // run the code
     loop {
         /*
+        - openOpen
         - just keep executing next instruction in memory (even if we progress into data memory?)
         - will have to implement a stack for subroutines (or at least a return pointer)
-        */
+            */
 
-        let opcode_left_byte = state.memory_space[state.program_counter];
-        let opcode_right_byte = state.memory_space[state.program_counter + 1];
+        let opcode_left_byte = state.memory_space[state.program_counter as usize];
+        let opcode_right_byte = state.memory_space[state.program_counter as usize + 1];
 
         print!("{:02x?}{:02x?}, ", opcode_left_byte, opcode_right_byte,);
 
@@ -90,17 +97,18 @@ fn main() {
         // c)
 
         // if we have a 0x0000 opcode, terminate
-        if opcode_left_byte == 0x00 && opcode_right_byte == 0x00 {
+        if let InstructionResult::Terminate = program_counter_target {
             break;
         }
 
-        if let Some(target) = program_counter_target {
-            if target < state.memory_space.len() - 1 {
+        if let InstructionResult::Jump(target) = program_counter_target {
+            println!("executing jump {}", target);
+            if target < state.memory_space.len() as u16 - 1 {
                 state.program_counter = target;
             } else {
                 panic!("Attempted to access out of bounds memory");
             }
-        } else if state.program_counter + 2 < state.memory_space.len() - 1 {
+        } else if state.program_counter + 2 < state.memory_space.len() as u16 - 1 {
             state.program_counter += 2;
         } else {
             break;
@@ -120,28 +128,77 @@ fn load_program(state: &mut EmulatorState, file_name: &str) -> usize {
 }
 
 // returns desired program counter location
-fn process_opcode(opcode_left_byte: u8, _: u8) -> Option<usize> {
+fn process_opcode(opcode_left_byte: u8, opcode_right_byte: u8) -> InstructionResult {
+    use self::InstructionResult::*;
+
     // process opcode
-    let left_most_nibble = 0xF0 & opcode_left_byte;
-    match left_most_nibble {
-        0x00 => None,
-        0x10 => None,
-        0x20 => None,
-        0x30 => None,
-        0x40 => None,
-        0x50 => None,
-        0x60 => None,
-        0x70 => None,
-        0x80 => None,
-        0x90 => None,
-        0xA0 => None,
-        0xB0 => None,
-        0xC0 => None,
-        0xD0 => None,
-        0xE0 => None,
-        0xF0 => None,
-        _ => None,
+    let fourth_nibble = (0xF0 & opcode_left_byte) >> 4;
+    let _third_nibble = 0x0F & opcode_left_byte;
+    let _second_nibble = (0xF0 & opcode_right_byte) >> 4;
+    let _first_nibble = 0x0F & opcode_right_byte;
+
+    // ewwwwwwwwwww
+    let prepare_jump = || {
+        let mut jump_addr = opcode_left_byte as u16;
+        jump_addr <<= 8;
+        jump_addr |= 0x00FF;
+        let afsfdsa = opcode_right_byte as u16 | 0xFF00;
+        jump_addr &= afsfdsa;
+        jump_addr &= 0x0FFF;
+        Jump(jump_addr)
+    };
+
+    match fourth_nibble {
+        0x0 => {
+            if _second_nibble != 0xE {
+                if opcode_left_byte == 0x00 && opcode_right_byte == 0x00 {
+                    println!("terminate the program");
+                    return Terminate;
+                }
+
+                // not sure if 0000 should map to something specific, or result in particular
+                // behaviour, could also just be padding bytes at the end of the rom?
+                // it could be an exit or halt command essentially
+                println!(
+                    "execute machine language subroutine at address {}{}{}",
+                    _third_nibble, _second_nibble, _first_nibble
+                );
+                prepare_jump()
+            } else if _first_nibble == 0x0 {
+                println!("clear the screen");
+                Continue
+            } else {
+                println!("return from subroutine");
+                Continue
+            }
+        }
+        0x1 => {
+            println!("jump");
+            prepare_jump()
+        }
+        0x2 => Continue,
+        0x3 => Continue,
+        0x4 => Continue,
+        0x5 => Continue,
+        0x6 => Continue,
+        0x7 => Continue,
+        0x8 => Continue,
+        0x9 => Continue,
+        0xA => Continue,
+        0xB => Continue,
+        0xC => Continue,
+        0xD => Continue,
+        0xE => Continue,
+        0xF => Continue,
+        _ => Continue,
     }
 }
 
-fn jump_to_address() {}
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn jazz() {
+        assert!(false);
+    }
+}
