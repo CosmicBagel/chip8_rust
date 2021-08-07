@@ -141,14 +141,13 @@ fn process_opcode(opcode_left_byte: u8, opcode_right_byte: u8) -> InstructionRes
     let _second_nibble = (0xF0 & opcode_right_byte) >> 4;
     let _first_nibble = 0x0F & opcode_right_byte;
 
-    // ewwwwwwwwwww
     let prepare_jump = || {
         let mut jump_addr = opcode_left_byte as u16;
-        jump_addr <<= 8;
-        jump_addr |= 0x00FF;
-        let afsfdsa = opcode_right_byte as u16 | 0xFF00;
-        jump_addr &= afsfdsa;
-        jump_addr &= 0x0FFF;
+        // we want to throw out the left (highest) nibble as we only want the
+        // lower 3 nibbles which are the address
+        jump_addr <<= 12;
+        jump_addr >>= 4;
+        jump_addr |= opcode_right_byte as u16;
         Jump(jump_addr)
     };
 
