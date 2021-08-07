@@ -35,6 +35,8 @@ const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
 
 struct EmulatorState {
     registers: [u8; 16],
+    // although we need usize to access the array that the instructions are stored in
+    // its better to explicitly say u16 as usize can technically be as small as u8
     address_register: u16,
     memory_space: [u8; MAX_MEMORY],
     timer_counter: u8,
@@ -55,7 +57,7 @@ fn main() {
         memory_space: [0_u8; MAX_MEMORY],
         timer_counter: 0_u8,
         sound_counter: 0_u8,
-        program_counter: 0_u16,
+        program_counter: 0x200_u16,
     };
 
     // based on 4kb variant (hence 3215 bytes) (wait shouldn't it be 3583???)
@@ -84,8 +86,10 @@ fn main() {
         - will have to implement a stack for subroutines (or at least a return pointer)
             */
 
-        let opcode_left_byte = state.memory_space[state.program_counter as usize];
-        let opcode_right_byte = state.memory_space[state.program_counter as usize + 1];
+        let translated_address = state.program_counter as usize - 0x200;
+
+        let opcode_left_byte = state.memory_space[translated_address];
+        let opcode_right_byte = state.memory_space[translated_address as usize + 1];
 
         print!("{:02x?}{:02x?}, ", opcode_left_byte, opcode_right_byte,);
 
@@ -102,7 +106,7 @@ fn main() {
         }
 
         if let InstructionResult::Jump(target) = program_counter_target {
-            println!("executing jump {}", target);
+            println!("executing jump {:#06x}", target);
             if target < state.memory_space.len() as u16 - 1 {
                 state.program_counter = target;
             } else {
