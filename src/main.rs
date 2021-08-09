@@ -93,7 +93,8 @@ fn main() {
 
         print!("{:02x?}{:02x?}, ", opcode_left_byte, opcode_right_byte,);
 
-        let program_counter_target = process_opcode(opcode_left_byte, opcode_right_byte);
+        let program_counter_target =
+            process_opcode(&mut state, opcode_left_byte, opcode_right_byte);
         // ideas to handle state mutation and opcode
         // a) context bag  with everything that just get borrowed
         // b) decode opcodes, create message enum, keep data in main and just pass
@@ -132,7 +133,11 @@ fn load_program(state: &mut EmulatorState, file_name: &str) -> usize {
 }
 
 // returns desired program counter location
-fn process_opcode(opcode_left_byte: u8, opcode_right_byte: u8) -> InstructionResult {
+fn process_opcode(
+    state: &mut EmulatorState,
+    opcode_left_byte: u8,
+    opcode_right_byte: u8,
+) -> InstructionResult {
     use self::InstructionResult::*;
 
     // process opcode
@@ -187,7 +192,17 @@ fn process_opcode(opcode_left_byte: u8, opcode_right_byte: u8) -> InstructionRes
         0x7 => Continue,
         0x8 => Continue,
         0x9 => Continue,
-        0xA => Continue,
+        0xA => {
+            // extract address from opcode
+            state.address_register = 0;
+            state.address_register |= _third_nibble as u16;
+            state.address_register <<= 4;
+            state.address_register |= _second_nibble as u16;
+            state.address_register <<= 4;
+            state.address_register |= _first_nibble as u16;
+
+            Continue
+        }
         0xB => Continue,
         0xC => Continue,
         0xD => Continue,
