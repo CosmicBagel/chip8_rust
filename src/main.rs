@@ -178,8 +178,9 @@ fn process_opcode(
                 Continue
             } else if first_nibble == 0x0 {
                 //0x00E0
+                //TODO implement clear screen
                 println!("NOT IMPLEMENTED clear the screen");
-                Continue
+                Terminate
             } else {
                 // 0x00EE
                 println!("return from a subroutine");
@@ -205,13 +206,51 @@ fn process_opcode(
                 .push(state.program_counter + 2);
             jump_to_opcode_nnn()
         }
-        0x3 => Continue,
-        0x4 => Continue,
-        0x5 => Continue,
-        0x6 => Continue,
-        0x7 => Continue,
-        0x8 => Continue,
-        0x9 => Continue,
+        0x3 => {
+            // 0x3XNN Skip the following instruction if the value of register VX equals NN
+            if state.registers[third_nibble as usize] == opcode_right_byte {
+                Jump(state.program_counter + 4)
+            } else {
+                Continue
+            }
+        }
+        0x4 => {
+            // 0x4XNN Skip the following instruction if the value of register VX is NOT equal to NN
+            if state.registers[third_nibble as usize] != opcode_right_byte {
+                Jump(state.program_counter + 4)
+            } else {
+                Continue
+            }
+        }
+        0x5 => {
+            // 0x5XY0 Skip the following instruction if the value of register VX is equal to the
+            // value of register VY
+            if state.registers[third_nibble as usize] == state.registers[second_nibble as usize] {
+                Jump(state.program_counter + 4)
+            } else {
+                Continue
+            }
+        }
+        0x6 => {
+            //0x6XNN store number NN in register VX
+            state.registers[third_nibble as usize] = opcode_right_byte;
+            Continue
+        }
+        0x7 => {
+            //0x7XNN Add the value NN to register VX
+            state.registers[third_nibble as usize] += opcode_right_byte;
+            Continue
+        }
+        0x8 => Terminate,
+        0x9 => {
+            // 0x9XY0 Skip the following instruction if the value of register VX is NOT equal to the
+            // value of register VY
+            if state.registers[third_nibble as usize] != state.registers[second_nibble as usize] {
+                Jump(state.program_counter + 4)
+            } else {
+                Continue
+            }
+        }
         0xA => {
             // extract address from opcode
             state.address_register = 0;
@@ -223,12 +262,27 @@ fn process_opcode(
 
             Continue
         }
-        0xB => Continue,
-        0xC => Continue,
-        0xD => Continue,
-        0xE => Continue,
-        0xF => Continue,
-        _ => Continue,
+        0xB => {
+            //0xBNNN Jump to address NNN + V0
+            // let mut jump_target = jump_to_opcode_nnn();
+            let mut jump_addr = opcode_left_byte as u16;
+            jump_addr <<= 12;
+            jump_addr >>= 4;
+            jump_addr |= opcode_right_byte as u16;
+            jump_addr += state.registers[0] as u16;
+            Jump(jump_addr)
+        }
+        0xC => {
+            // TODO implement rng
+            Terminate
+        }
+        0xD => {
+            //TODO draw sprite
+            Terminate
+        }
+        0xE => Terminate,
+        0xF => Terminate,
+        _ => Terminate,
     }
 }
 
