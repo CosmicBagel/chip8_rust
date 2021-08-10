@@ -238,7 +238,8 @@ fn process_opcode(
         }
         0x7 => {
             //0x7XNN Add the value NN to register VX
-            state.registers[third_nibble as usize] += opcode_right_byte;
+            let result = state.registers[third_nibble as usize].overflowing_add(opcode_right_byte);
+            state.registers[third_nibble as usize] = result.0;
             Continue
         }
         0x8 => Terminate,
