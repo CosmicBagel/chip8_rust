@@ -95,11 +95,6 @@ fn main() {
         if state.sound_counter > 0 {
             state.sound_counter -= 1;
         }
-        /*
-        - openOpen
-        - just keep executing next instruction in memory (even if we progress into data memory?)
-        - will have to implement a stack for subroutines (or at least a return pointer)
-            */
 
         let translated_address = state.program_counter as usize - 0x200;
 
@@ -116,7 +111,7 @@ fn main() {
         //    whats needed to specific funcs
         // c)
 
-        // if we have a 0x0000 opcode, terminate
+        // if we have a 0x0000 opcode or a bad opcode, terminate
         if let InstructionResult::Terminate = program_counter_target {
             println!("Terminating");
             break;
@@ -430,7 +425,6 @@ fn process_opcode(
             0x33 => {
                 //0xFX33 Store the binary-coded decimal equivalent of the value stored in register
                 //VX at addresses I, I + 1, and I + 2
-                //todo implement binary coded decimal
                 let mut value = state.registers[third_nibble as usize];
                 let hundreds = value % 100;
                 value -= hundreds;
