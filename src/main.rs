@@ -88,6 +88,13 @@ fn main() {
 
     // run the code
     loop {
+        // since we're sleep for 16 ms per cycle, this will very roughly approximate 60hz
+        if state.timer_counter > 0 {
+            state.timer_counter -= 1;
+        }
+        if state.sound_counter > 0 {
+            state.sound_counter -= 1;
+        }
         /*
         - openOpen
         - just keep executing next instruction in memory (even if we progress into data memory?)
