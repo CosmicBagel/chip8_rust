@@ -110,6 +110,7 @@ fn main() {
 
         // if we have a 0x0000 opcode, terminate
         if let InstructionResult::Terminate = program_counter_target {
+            println!("Terminating");
             break;
         }
 
@@ -180,7 +181,7 @@ fn process_opcode(
                 //0x00E0
                 //TODO implement clear screen
                 println!("NOT IMPLEMENTED clear the screen");
-                Terminate
+                Continue
             } else {
                 // 0x00EE
                 println!("return from a subroutine");
@@ -242,7 +243,94 @@ fn process_opcode(
             state.registers[third_nibble as usize] = result.0;
             Continue
         }
-        0x8 => Terminate,
+        0x8 => {
+            match first_nibble {
+                0x0 => {
+                    //0x8XY0 Store the value of register VY in register VX
+                    state.registers[third_nibble as usize] =
+                        state.registers[second_nibble as usize];
+                    Continue
+                }
+                0x1 => {
+                    //0x8XY1 Set VX to VX OR VY
+                    state.registers[third_nibble as usize] |=
+                        state.registers[second_nibble as usize];
+                    Continue
+                }
+                0x2 => {
+                    //0x8XY2 Set VX to VX AND VY
+                    state.registers[third_nibble as usize] &=
+                        state.registers[second_nibble as usize];
+                    Continue
+                }
+                0x3 => {
+                    //0x8XY3 Set VX to VX XOR VY
+                    state.registers[third_nibble as usize] ^=
+                        state.registers[second_nibble as usize];
+                    Continue
+                }
+                0x4 => {
+                    //0x8XY4 Add the value of register VY to register VX
+                    // Set VF to 01 if a carry occurs
+                    // Set VF to 00 if a carry does not occur
+                    // By "carry" we're talking about OVERFLOW
+                    let result = state.registers[third_nibble as usize]
+                        .overflowing_add(state.registers[second_nibble as usize]);
+                    state.registers[third_nibble as usize] = result.0;
+                    state.registers[0xF_usize] = result.1 as u8;
+                    Continue
+                }
+                0x5 => {
+                    // 0x8XY5 Subtract the value of register VY from register VX
+                    //Set VF to 00 if a borrow occurs
+                    //Set VF to 01 if a borrow does not occur
+                    //By borrow we're talking about UNDERFLOW
+
+                    let result = state.registers[third_nibble as usize]
+                        .overflowing_sub(state.registers[second_nibble as usize]);
+                    state.registers[third_nibble as usize] = result.0;
+                    state.registers[0xF_usize] = result.1 as u8;
+                    Continue
+                }
+                0x6 => {
+                    //0x8XY6 Store the value of register VY shifted right one bit in register VX
+                    //Set register VF to the least significant bit prior to the shift
+                    //VY is unchanged
+                    let val = state.registers[second_nibble as usize];
+                    state.registers[0xF_usize] = val & 0xFE;
+                    state.registers[third_nibble as usize] =
+                        state.registers[second_nibble as usize] >> 1;
+                    Continue
+                }
+                0x7 => {
+                    //0x8XY7 Set register VX to the value of VY minus VX
+                    //Set VF to 00 if a borrow occurs
+                    //Set VF to 01 if a borrow does not occur
+                    let result = state.registers[second_nibble as usize]
+                        .overflowing_sub(state.registers[third_nibble as usize]);
+                    state.registers[third_nibble as usize] = result.0;
+                    state.registers[0xF_usize] = result.1 as u8;
+                    Continue
+                }
+                0xE => {
+                    //0x8XYE Store the value of register VY shifted left one bit in register VX
+                    //Set register VF to the most significant bit prior to the shift
+                    //VY is unchanged
+                    let val = state.registers[second_nibble as usize];
+                    state.registers[0xF_usize] = val >> 7;
+                    state.registers[third_nibble as usize] =
+                        state.registers[second_nibble as usize] << 1;
+                    Continue
+                }
+                _ => {
+                    println!(
+                        "Malformed opcode 0x{:#06x}{:#06x}",
+                        opcode_left_byte, opcode_right_byte
+                    );
+                    Terminate
+                }
+            }
+        }
         0x9 => {
             // 0x9XY0 Skip the following instruction if the value of register VX is NOT equal to the
             // value of register VY
@@ -279,7 +367,7 @@ fn process_opcode(
         }
         0xD => {
             //TODO draw sprite
-            Terminate
+            Continue
         }
         0xE => Terminate,
         0xF => Terminate,
