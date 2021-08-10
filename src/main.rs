@@ -32,6 +32,7 @@ use std::time;
 const DEFAULT_ROM: &str = "roms/test_opcode.ch8";
 const MAX_MEMORY: usize = 3215;
 const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
+const MAX_STACK: usize = 12;
 
 struct EmulatorState {
     registers: [u8; 16],
@@ -42,12 +43,17 @@ struct EmulatorState {
     timer_counter: u8,
     sound_counter: u8,
     program_counter: u16,
+    subroutine_return_pointers: Vec<u16>,
 }
 
 enum InstructionResult {
     Continue,
     Terminate,
     Jump(u16),
+}
+
+impl EmulatorState {
+    fn cool_method(&mut self) {}
 }
 
 fn main() {
@@ -58,6 +64,7 @@ fn main() {
         timer_counter: 0_u8,
         sound_counter: 0_u8,
         program_counter: 0x200_u16,
+        subroutine_return_pointers: vec![0_u16; MAX_STACK],
     };
 
     // based on 4kb variant (hence 3215 bytes) (wait shouldn't it be 3583???)
@@ -142,11 +149,12 @@ fn process_opcode(
 
     // process opcode
     let fourth_nibble = (0xF0 & opcode_left_byte) >> 4;
-    let _third_nibble = 0x0F & opcode_left_byte;
-    let _second_nibble = (0xF0 & opcode_right_byte) >> 4;
-    let _first_nibble = 0x0F & opcode_right_byte;
+    let third_nibble = 0x0F & opcode_left_byte;
+    let second_nibble = (0xF0 & opcode_right_byte) >> 4;
+    let first_nibble = 0x0F & opcode_right_byte;
 
-    let prepare_jump = || {
+    // NNN refers to 0x0NNN parts of the opcode being processed
+    let jump_to_opcode_nnn = || {
         let mut jump_addr = opcode_left_byte as u16;
         // we want to throw out the left (highest) nibble as we only want the
         // lower 3 nibbles which are the address
@@ -158,31 +166,33 @@ fn process_opcode(
 
     match fourth_nibble {
         0x0 => {
-            if _second_nibble != 0xE {
+            if second_nibble != 0xE {
                 if opcode_left_byte == 0x00 && opcode_right_byte == 0x00 {
                     println!("terminate the program");
                     return Terminate;
                 }
 
-                // not sure if 0000 should map to something specific, or result in particular
-                // behaviour, could also just be padding bytes at the end of the rom?
-                // it could be an exit or halt command essentially
-                println!(
-                    "execute machine language subroutine at address {}{}{}",
-                    _third_nibble, _second_nibble, _first_nibble
-                );
-                prepare_jump()
-            } else if _first_nibble == 0x0 {
-                println!("clear the screen");
+                println!("return from a subroutine");
+                let return_address = state.subroutine_return_pointers.pop().unwrap_or_else(|| {
+                    println!("could not return from subroutine, no return pointers");
+                    0_u16
+                });
+                if return_address != 0 {
+                    Jump(return_address)
+                } else {
+                    Terminate
+                }
+            } else if first_nibble == 0x0 {
+                println!("NOT IMPLEMENTED clear the screen");
                 Continue
             } else {
-                println!("return from subroutine");
+                println!("NOT IMPLEMENTED return from subroutine");
                 Continue
             }
         }
         0x1 => {
             println!("jump");
-            prepare_jump()
+            jump_to_opcode_nnn()
         }
         0x2 => Continue,
         0x3 => Continue,
@@ -195,11 +205,11 @@ fn process_opcode(
         0xA => {
             // extract address from opcode
             state.address_register = 0;
-            state.address_register |= _third_nibble as u16;
+            state.address_register |= third_nibble as u16;
             state.address_register <<= 4;
-            state.address_register |= _second_nibble as u16;
+            state.address_register |= second_nibble as u16;
             state.address_register <<= 4;
-            state.address_register |= _first_nibble as u16;
+            state.address_register |= first_nibble as u16;
 
             Continue
         }
