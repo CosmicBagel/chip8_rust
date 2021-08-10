@@ -1,3 +1,4 @@
+use rand::random;
 use std::fs::File;
 use std::io::{prelude::*, stdout};
 use std::thread;
@@ -366,10 +367,17 @@ fn process_opcode(
             Jump(jump_addr)
         }
         0xC => {
-            // TODO implement rng
+            // 0xCXNN Set VX to a random number with a mask of NN
+            let mut rand_val: u8 = random();
+            rand_val &= opcode_right_byte;
+            state.registers[third_nibble as usize] = rand_val;
+
             Terminate
         }
         0xD => {
+            // 0xDXYN Draw a sprite at position VX, VY with N bytes of sprite data starting at the
+            //address stored in I
+            //Set VF to 01 if any set pixels are changed to unset, and 00 otherwise
             //TODO draw sprite
             Continue
         }
