@@ -192,6 +192,10 @@ fn process_opcode(
                 if return_address != 0 {
                     Jump(return_address)
                 } else {
+                    println!(
+                        "Malformed opcode 0x{:#06x}{:#06x}",
+                        opcode_left_byte, opcode_right_byte
+                    );
                     Terminate
                 }
             }
@@ -369,9 +373,99 @@ fn process_opcode(
             //TODO draw sprite
             Continue
         }
-        0xE => Terminate,
-        0xF => Terminate,
-        _ => Terminate,
+        0xE => {
+            //TODO implement input
+            Terminate
+        }
+        0xF => match opcode_right_byte {
+            0x07 => {
+                //0xFX07 Store the current value of the delay timer in register VX
+                state.registers[third_nibble as usize] = state.timer_counter;
+                Continue
+            }
+            0x0A => {
+                //0xFX0A Wait for a keypress and store the result in register VX
+                //TODO implement input
+                Continue
+            }
+            0x15 => {
+                //0xFX15 Set the delay timer to the value of register VX
+                state.timer_counter = state.registers[third_nibble as usize];
+                Continue
+            }
+            0x18 => {
+                //0xFX18 Set the sound timer to the value of register VX
+                state.sound_counter = state.registers[third_nibble as usize];
+                Continue
+            }
+            0x1E => {
+                //0xFX1E Add the value stored in register VX to register I
+                let result = state
+                    .address_register
+                    .overflowing_add(state.registers[third_nibble as usize] as u16);
+                state.address_register = result.0;
+                Continue
+            }
+            0x29 => {
+                //0xFX29 Set I to the memory address of the sprite data corresponding to the
+                // hexadecimal digit stored in register VX
+                //TODO implement drawing
+                Continue
+            }
+            0x33 => {
+                //0xFX33 Store the binary-coded decimal equivalent of the value stored in register
+                //VX at addresses I, I + 1, and I + 2
+                //todo implement binary coded decimal
+                let mut value = state.registers[third_nibble as usize];
+                let hundreds = value % 100;
+                value -= hundreds;
+                let tens = value % 10;
+                value -= tens;
+
+                let base_address = (state.address_register - 0x200) as usize;
+                state.memory_space[base_address] = hundreds;
+                state.memory_space[base_address + 1] = tens;
+                state.memory_space[base_address + 2] = value;
+
+                Continue
+            }
+            0x55 => {
+                //0xFX55 Store the values of registers V0 to VX inclusive in memory starting at
+                // address I
+                //I is set to I + X + 1 after operation
+                for reg_index in 0..third_nibble {
+                    let write_address = state.address_register - 0x200 + reg_index as u16;
+                    state.memory_space[write_address as usize] =
+                        state.registers[reg_index as usize];
+                }
+                Continue
+            }
+            0x65 => {
+                //0xFX65 Fill registers V0 to VX inclusive with the values stored in memory starting
+                // at address I
+                //I is set to I + X + 1 after operation
+                for reg_index in 0..third_nibble {
+                    let read_address = state.address_register - 0x200 + reg_index as u16;
+                    state.registers[reg_index as usize] = state.memory_space[read_address as usize];
+                }
+                Continue
+            }
+
+            _ => {
+                println!(
+                    "Malformed opcode 0x{:#06x}{:#06x}",
+                    opcode_left_byte, opcode_right_byte
+                );
+                Terminate
+            }
+        },
+        _ => {
+            println!(
+                "Malformed opcode 0x{:#06x}{:#06x}",
+                opcode_left_byte, opcode_right_byte
+            );
+            Terminate
+        }
     }
 }
 
