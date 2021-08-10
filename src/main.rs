@@ -198,7 +198,13 @@ fn process_opcode(
             println!("jump");
             jump_to_opcode_nnn()
         }
-        0x2 => Continue,
+        0x2 => {
+            println!("call subroutine");
+            state
+                .subroutine_return_pointers
+                .push(state.program_counter + 2);
+            jump_to_opcode_nnn()
+        }
         0x3 => Continue,
         0x4 => Continue,
         0x5 => Continue,
