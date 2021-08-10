@@ -167,11 +167,21 @@ fn process_opcode(
     match fourth_nibble {
         0x0 => {
             if second_nibble != 0xE {
+                // 0x0000
                 if opcode_left_byte == 0x00 && opcode_right_byte == 0x00 {
                     println!("terminate the program");
                     return Terminate;
                 }
 
+                // 0x0NNN
+                // This emulator will not support machine language subroutines
+                Continue
+            } else if first_nibble == 0x0 {
+                //0x00E0
+                println!("NOT IMPLEMENTED clear the screen");
+                Continue
+            } else {
+                // 0x00EE
                 println!("return from a subroutine");
                 let return_address = state.subroutine_return_pointers.pop().unwrap_or_else(|| {
                     println!("could not return from subroutine, no return pointers");
@@ -182,12 +192,6 @@ fn process_opcode(
                 } else {
                     Terminate
                 }
-            } else if first_nibble == 0x0 {
-                println!("NOT IMPLEMENTED clear the screen");
-                Continue
-            } else {
-                println!("NOT IMPLEMENTED return from subroutine");
-                Continue
             }
         }
         0x1 => {
