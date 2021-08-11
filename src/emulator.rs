@@ -1,15 +1,12 @@
 use rand::random;
 use std::fs::File;
 use std::io::prelude::*;
-use std::time;
 
 //refactor todo list
 // todo newtypes for address and registers and maybe program counter
 // todo timer_counter decremented on side thread dedicated to just decrementing it at regular
 //      interval (we'll just use arc and an atomic integer)
-pub const DEFAULT_ROM: &str = "roms/test_opcode.ch8";
 pub const MAX_MEMORY: usize = 3215;
-pub const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
 pub const MAX_STACK: usize = 12;
 
 #[derive(Copy, Clone)]

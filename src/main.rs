@@ -1,8 +1,12 @@
 use std::io::{prelude::*, stdout};
 use std::thread;
+use std::time;
 
 mod emulator;
 use emulator::*;
+
+const DEFAULT_ROM: &str = "roms/test_opcode.ch8";
+const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
 
 /*
     - code ingestion
