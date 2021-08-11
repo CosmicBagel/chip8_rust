@@ -35,7 +35,6 @@ use std::time;
 // todo newtypes for address and registers and maybe program counter
 // todo timer_counter decremented on side thread dedicated to just decrementing it at regular
 //      interval (we'll just use arc and an atomic integer)
-// todo remove the InstructionResult enum / or rethink how the processing loop is done
 const DEFAULT_ROM: &str = "roms/test_opcode.ch8";
 const MAX_MEMORY: usize = 3215;
 const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
@@ -67,7 +66,14 @@ enum OpcodeResult {
     Continue,
     Terminate,
     Jump(u16),
+    SkipNext,
     Malformed,
+}
+
+#[derive(PartialEq)]
+enum CycleResult {
+    Working,
+    Terminated,
 }
 
 fn main() {
@@ -101,7 +107,7 @@ fn main() {
 
     // run the code
     loop {
-        if emulator.execute_cycle() {
+        if emulator.execute_cycle() == CycleResult::Terminated {
             break;
         }
 
@@ -119,7 +125,7 @@ impl Emulator {
         rom_file.read(&mut self.memory_space).unwrap()
     }
 
-    fn execute_cycle(&mut self) -> bool {
+    fn execute_cycle(&mut self) -> CycleResult {
         // since we're sleep for 16 ms per cycle, this will very roughly approximate 60hz
         if self.timer_counter > 0 {
             self.timer_counter -= 1;
@@ -127,32 +133,44 @@ impl Emulator {
         if self.sound_counter > 0 {
             self.sound_counter -= 1;
         }
+
         let opcode = self.load_opcode();
         let opcode_result = self.process_opcode(opcode);
-        if let OpcodeResult::Malformed = opcode_result {
-            println!(
-                "Malformed opcode 0x{:#06x}{:#06x}",
-                opcode.left_byte, opcode.right_byte
-            );
-            return true;
-        }
-        if let OpcodeResult::Terminate = opcode_result {
-            println!("Terminating");
-            return true;
-        }
-        if let OpcodeResult::Jump(target) = opcode_result {
-            println!("executing jump {:#06x}", target);
-            if target < self.memory_space.len() as u16 - 1 {
-                self.program_counter = target;
-            } else {
-                panic!("Attempted to access out of bounds memory");
+
+        match opcode_result {
+            OpcodeResult::Terminate => {
+                println!("Terminating");
+                return CycleResult::Terminated;
             }
-        } else if self.program_counter + 2 < self.memory_space.len() as u16 - 1 {
-            self.program_counter += 2;
-        } else {
-            return true;
+            OpcodeResult::Jump(target) => {
+                if target < self.memory_space.len() as u16 - 1 {
+                    self.program_counter = target;
+                } else {
+                    panic!("Jump instruction attempted to access out of bounds memory");
+                }
+            }
+            OpcodeResult::SkipNext => {
+                if self.program_counter + 4 < self.memory_space.len() as u16 - 1 {
+                    self.program_counter += 4;
+                } else {
+                    panic!("Skip instruction attempted to access out of bounds memory");
+                }
+            }
+            OpcodeResult::Malformed => {
+                panic!(
+                    "Malformed opcode 0x{:#06x}{:#06x}",
+                    opcode.left_byte, opcode.right_byte
+                );
+            }
+            OpcodeResult::Continue => {
+                if self.program_counter + 2 < self.memory_space.len() as u16 - 1 {
+                    self.program_counter += 2;
+                } else {
+                    panic!("Program counter exceeded memory bounds");
+                }
+            }
         }
-        false
+        CycleResult::Working
     }
 
     fn load_opcode(&self) -> Opcode {
@@ -176,16 +194,6 @@ impl Emulator {
         opcode
     }
 
-    fn prepare_jump_to_nnn(opcode: Opcode) -> OpcodeResult {
-        let mut jump_addr = opcode.left_byte as u16;
-        // we want to throw out the left (highest) nibble as we only want the
-        // lower 3 nibbles which are the address
-        jump_addr <<= 12;
-        jump_addr >>= 4;
-        jump_addr |= opcode.right_byte as u16;
-        OpcodeResult::Jump(jump_addr)
-    }
-
     // returns desired program counter location
     fn process_opcode(&mut self, opcode: Opcode) -> OpcodeResult {
         // NNN refers to 0x0NNN parts of the opcode being processed
@@ -196,7 +204,6 @@ impl Emulator {
                 if opcode.second_nibble != 0xE {
                     if opcode.left_byte == 0x00 && opcode.right_byte == 0x00 {
                         // 0x0000 EOF
-                        println!("terminate the program");
                         OpcodeResult::Terminate
                     } else {
                         // 0x0NNN Execute machine language subroutine at address NNN
@@ -255,7 +262,6 @@ impl Emulator {
 
     fn return_from_subroutine(&mut self) -> OpcodeResult {
         // 0x00EE Return from a subroutine
-        println!("return from a subroutine");
         let return_address = self.subroutine_return_pointers.pop().unwrap_or_else(|| {
             println!("could not return from subroutine, no return pointers");
             0_u16
@@ -269,7 +275,7 @@ impl Emulator {
 
     fn call_subroutine(&mut self, opcode: Opcode) -> OpcodeResult {
         // 0x2NNN Execute subroutine starting at address NNN
-        println!("call subroutine");
+        // +2 so that we don't loop on return
         self.subroutine_return_pointers
             .push(self.program_counter + 2);
         Emulator::prepare_jump_to_nnn(opcode)
@@ -278,7 +284,7 @@ impl Emulator {
     fn skip_next_if_x_reg_equal(&mut self, opcode: Opcode) -> OpcodeResult {
         // 0x3XNN Skip the following instruction if the value of register VX equals NN
         if self.registers[opcode.third_nibble as usize] == opcode.right_byte {
-            OpcodeResult::Jump(self.program_counter + 4)
+            OpcodeResult::SkipNext
         } else {
             OpcodeResult::Continue
         }
@@ -287,7 +293,7 @@ impl Emulator {
     fn skip_next_if_x_reg_not_equal(&mut self, opcode: Opcode) -> OpcodeResult {
         // 0x4XNN Skip the following instruction if the value of register VX is NOT equal to NN
         if self.registers[opcode.third_nibble as usize] != opcode.right_byte {
-            OpcodeResult::Jump(self.program_counter + 4)
+            OpcodeResult::SkipNext
         } else {
             OpcodeResult::Continue
         }
@@ -299,7 +305,7 @@ impl Emulator {
         if self.registers[opcode.third_nibble as usize]
             == self.registers[opcode.second_nibble as usize]
         {
-            OpcodeResult::Jump(self.program_counter + 4)
+            OpcodeResult::SkipNext
         } else {
             OpcodeResult::Continue
         }
@@ -410,7 +416,7 @@ impl Emulator {
         if self.registers[opcode.third_nibble as usize]
             != self.registers[opcode.second_nibble as usize]
         {
-            OpcodeResult::Jump(self.program_counter + 4)
+            OpcodeResult::SkipNext
         } else {
             OpcodeResult::Continue
         }
@@ -546,7 +552,6 @@ impl Emulator {
 
     fn jump(&mut self, opcode: Opcode) -> OpcodeResult {
         //0x1NNN Jump to address NNN
-        println!("jump");
         Emulator::prepare_jump_to_nnn(opcode)
     }
 
@@ -555,6 +560,16 @@ impl Emulator {
         //TODO implement clear screen
         println!("NOT IMPLEMENTED clear the screen");
         OpcodeResult::Continue
+    }
+
+    fn prepare_jump_to_nnn(opcode: Opcode) -> OpcodeResult {
+        let mut jump_addr = opcode.left_byte as u16;
+        // we want to throw out the left (highest) nibble as we only want the
+        // lower 3 nibbles which are the address
+        jump_addr <<= 12;
+        jump_addr >>= 4;
+        jump_addr |= opcode.right_byte as u16;
+        OpcodeResult::Jump(jump_addr)
     }
 }
 
