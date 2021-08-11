@@ -33,16 +33,6 @@ use emulator::*;
 */
 
 fn main() {
-    let mut emulator = Emulator {
-        registers: [0_u8; 16],
-        address_register: 0_u16,
-        memory_space: [0_u8; MAX_MEMORY],
-        timer_counter: 0_u8,
-        sound_counter: 0_u8,
-        program_counter: 0x200_u16,
-        subroutine_return_pointers: vec![0_u16; MAX_STACK],
-    };
-
     // based on 4kb variant (hence 3215 bytes) (wait shouldn't it be 3583???)
     // all memory accesses will be in big endian
     // chip 8 is big endian!!!
@@ -58,6 +48,7 @@ fn main() {
     // (code is allowed to be self modifying (ie no write protection region))
     // error on any address read/write below 0x200
 
+    let mut emulator = Emulator::new();
     let bytes_read = emulator.load_program(DEFAULT_ROM);
     println!("Loaded program, bytes {}", bytes_read);
 

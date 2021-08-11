@@ -48,6 +48,19 @@ pub struct Emulator {
 }
 
 impl Emulator {
+    pub fn new() -> Emulator {
+        let mut emulator = Emulator {
+            registers: [0_u8; 16],
+            address_register: 0_u16,
+            memory_space: [0_u8; MAX_MEMORY],
+            timer_counter: 0_u8,
+            sound_counter: 0_u8,
+            program_counter: 0x200_u16,
+            subroutine_return_pointers: vec![0_u16; MAX_STACK],
+        };
+        emulator
+    }
+
     pub fn load_program(&mut self, file_name: &str) -> usize {
         let mut rom_file = File::open(file_name).unwrap();
         rom_file.read(&mut self.memory_space).unwrap()
