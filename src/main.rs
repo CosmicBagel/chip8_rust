@@ -101,40 +101,7 @@ fn main() {
 
     // run the code
     loop {
-        // since we're sleep for 16 ms per cycle, this will very roughly approximate 60hz
-        if emulator.timer_counter > 0 {
-            emulator.timer_counter -= 1;
-        }
-        if emulator.sound_counter > 0 {
-            emulator.sound_counter -= 1;
-        }
-
-        let opcode = emulator.load_opcode();
-        let opcode_result = emulator.process_opcode(opcode);
-
-        if let OpcodeResult::Malformed = opcode_result {
-            println!(
-                "Malformed opcode 0x{:#06x}{:#06x}",
-                opcode.left_byte, opcode.right_byte
-            );
-            break;
-        }
-
-        if let OpcodeResult::Terminate = opcode_result {
-            println!("Terminating");
-            break;
-        }
-
-        if let OpcodeResult::Jump(target) = opcode_result {
-            println!("executing jump {:#06x}", target);
-            if target < emulator.memory_space.len() as u16 - 1 {
-                emulator.program_counter = target;
-            } else {
-                panic!("Attempted to access out of bounds memory");
-            }
-        } else if emulator.program_counter + 2 < emulator.memory_space.len() as u16 - 1 {
-            emulator.program_counter += 2;
-        } else {
+        if emulator.execute_cycle() {
             break;
         }
 
@@ -150,6 +117,42 @@ impl Emulator {
     fn load_program(&mut self, file_name: &str) -> usize {
         let mut rom_file = File::open(file_name).unwrap();
         rom_file.read(&mut self.memory_space).unwrap()
+    }
+
+    fn execute_cycle(&mut self) -> bool {
+        // since we're sleep for 16 ms per cycle, this will very roughly approximate 60hz
+        if self.timer_counter > 0 {
+            self.timer_counter -= 1;
+        }
+        if self.sound_counter > 0 {
+            self.sound_counter -= 1;
+        }
+        let opcode = self.load_opcode();
+        let opcode_result = self.process_opcode(opcode);
+        if let OpcodeResult::Malformed = opcode_result {
+            println!(
+                "Malformed opcode 0x{:#06x}{:#06x}",
+                opcode.left_byte, opcode.right_byte
+            );
+            return true;
+        }
+        if let OpcodeResult::Terminate = opcode_result {
+            println!("Terminating");
+            return true;
+        }
+        if let OpcodeResult::Jump(target) = opcode_result {
+            println!("executing jump {:#06x}", target);
+            if target < self.memory_space.len() as u16 - 1 {
+                self.program_counter = target;
+            } else {
+                panic!("Attempted to access out of bounds memory");
+            }
+        } else if self.program_counter + 2 < self.memory_space.len() as u16 - 1 {
+            self.program_counter += 2;
+        } else {
+            return true;
+        }
+        false
     }
 
     fn load_opcode(&self) -> Opcode {
