@@ -11,6 +11,7 @@ pub const MAX_STACK: usize = 12;
 
 #[derive(Copy, Clone)]
 struct Opcode {
+    full_opcode: u16,
     left_byte: u8,
     right_byte: u8,
     fourth_nibble: u8,
@@ -114,6 +115,7 @@ impl Emulator {
     fn load_opcode(&self) -> Opcode {
         let translated_address = self.program_counter as usize - 0x200;
         let mut opcode = Opcode {
+            full_opcode: 0,
             left_byte: self.memory_space[translated_address],
             right_byte: self.memory_space[translated_address as usize + 1],
             fourth_nibble: 0,
@@ -126,6 +128,9 @@ impl Emulator {
         opcode.third_nibble = 0x0F & opcode.left_byte;
         opcode.second_nibble = (0xF0 & opcode.right_byte) >> 4;
         opcode.first_nibble = 0x0F & opcode.right_byte;
+
+        opcode.full_opcode = (opcode.left_byte << 4) as u16;
+        opcode.full_opcode |= opcode.right_byte as u16;
 
         print!("{:02x?}{:02x?}, ", opcode.left_byte, opcode.right_byte,);
 
@@ -141,22 +146,18 @@ impl Emulator {
 
         match opcode.fourth_nibble {
             0x0 => {
-                //TODO review the logic of this
-                if opcode.second_nibble != 0xE {
-                    if opcode.left_byte == 0x00 && opcode.right_byte == 0x00 {
+                match opcode.full_opcode {
+                    0x00E0 => self.clear_screen(opcode),
+                    0x00EE => self.return_from_subroutine(),
+                    0x0000 => {
                         // 0x0000 EOF
                         OpcodeResult::Terminate
-                    } else {
+                    }
+                    _ => {
                         // 0x0NNN Execute machine language subroutine at address NNN
                         // This emulator will not support machine language subroutines!!!
                         OpcodeResult::Continue
                     }
-                } else if opcode.first_nibble == 0x0 {
-                    //0x00E0
-                    self.clear_screen(opcode)
-                } else {
-                    //0x00EE
-                    self.return_from_subroutine()
                 }
             }
             0x1 => self.jump(opcode),
