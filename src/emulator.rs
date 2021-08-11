@@ -13,7 +13,7 @@ pub const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16)
 pub const MAX_STACK: usize = 12;
 
 #[derive(Copy, Clone)]
-pub struct Opcode {
+struct Opcode {
     left_byte: u8,
     right_byte: u8,
     fourth_nibble: u8,
@@ -21,7 +21,7 @@ pub struct Opcode {
     second_nibble: u8,
     first_nibble: u8,
 }
-pub enum OpcodeResult {
+enum OpcodeResult {
     Continue,
     Terminate,
     Jump(u16),

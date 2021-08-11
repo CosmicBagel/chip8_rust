@@ -1,5 +1,6 @@
 use std::io::{prelude::*, stdout};
 use std::thread;
+
 mod emulator;
 use emulator::*;
 
