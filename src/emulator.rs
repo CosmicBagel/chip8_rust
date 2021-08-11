@@ -47,7 +47,7 @@ pub struct Emulator {
 
 impl Emulator {
     pub fn new() -> Emulator {
-        let mut emulator = Emulator {
+        Emulator {
             registers: [0_u8; 16],
             address_register: 0_u16,
             memory_space: [0_u8; MAX_MEMORY],
@@ -55,8 +55,7 @@ impl Emulator {
             sound_counter: 0_u8,
             program_counter: 0x200_u16,
             subroutine_return_pointers: vec![0_u16; MAX_STACK],
-        };
-        emulator
+        }
     }
 
     pub fn load_program(&mut self, file_name: &str) -> usize {
@@ -129,7 +128,7 @@ impl Emulator {
         opcode.second_nibble = (0xF0 & opcode.right_byte) >> 4;
         opcode.first_nibble = 0x0F & opcode.right_byte;
 
-        opcode.full_opcode = (opcode.left_byte << 4) as u16;
+        opcode.full_opcode = (opcode.left_byte as u16) << 8;
         opcode.full_opcode |= opcode.right_byte as u16;
 
         print!("{:02x?}{:02x?}, ", opcode.left_byte, opcode.right_byte,);
@@ -220,7 +219,7 @@ impl Emulator {
         // +2 so that we don't loop on return
         self.subroutine_return_pointers
             .push(self.program_counter + 2);
-        Emulator::prepare_jump_to_nnn(opcode)
+        OpcodeResult::Jump(opcode.full_opcode & 0x0FFF)
     }
 
     fn skip_next_if_x_reg_equal(&mut self, opcode: Opcode) -> OpcodeResult {
@@ -367,22 +366,14 @@ impl Emulator {
     fn store_address(&mut self, opcode: Opcode) -> OpcodeResult {
         // 0xANNN Store memory address NNN in register I (address register)
         // extract address from opcode
-        self.address_register = 0;
-        self.address_register |= opcode.third_nibble as u16;
-        self.address_register <<= 4;
-        self.address_register |= opcode.second_nibble as u16;
-        self.address_register <<= 4;
-        self.address_register |= opcode.first_nibble as u16;
+        self.address_register = opcode.full_opcode & 0x0FFF;
         OpcodeResult::Continue
     }
 
     fn jump_with_offset(&mut self, opcode: Opcode) -> OpcodeResult {
         //0xBNNN Jump to address NNN + V0
         // let mut jump_target = jump_to_opcode_nnn();
-        let mut jump_addr = opcode.left_byte as u16;
-        jump_addr <<= 12;
-        jump_addr >>= 4;
-        jump_addr |= opcode.right_byte as u16;
+        let mut jump_addr = opcode.full_opcode & 0x0FFF;
         jump_addr += self.registers[0] as u16;
         OpcodeResult::Jump(jump_addr)
     }
@@ -494,7 +485,7 @@ impl Emulator {
 
     fn jump(&mut self, opcode: Opcode) -> OpcodeResult {
         //0x1NNN Jump to address NNN
-        Emulator::prepare_jump_to_nnn(opcode)
+        OpcodeResult::Jump(opcode.full_opcode & 0x0FFF)
     }
 
     fn clear_screen(&mut self, _opcode: Opcode) -> OpcodeResult {
@@ -502,15 +493,5 @@ impl Emulator {
         //TODO implement clear screen
         println!("NOT IMPLEMENTED clear the screen");
         OpcodeResult::Continue
-    }
-
-    fn prepare_jump_to_nnn(opcode: Opcode) -> OpcodeResult {
-        let mut jump_addr = opcode.left_byte as u16;
-        // we want to throw out the left (highest) nibble as we only want the
-        // lower 3 nibbles which are the address
-        jump_addr <<= 12;
-        jump_addr >>= 4;
-        jump_addr |= opcode.right_byte as u16;
-        OpcodeResult::Jump(jump_addr)
     }
 }
