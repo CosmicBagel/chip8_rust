@@ -2,11 +2,23 @@ use std::io::{prelude::*, stdout};
 use std::thread;
 use std::time;
 
+use winit::{
+    event::{Event, WindowEvent},
+    event_loop::{ControlFlow, EventLoop},
+    window::WindowBuilder,
+};
+
 mod emulator;
 use emulator::*;
 
 const DEFAULT_ROM: &str = "roms/test_opcode.ch8";
 const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
+
+// general todo
+// todo get windowing up and running with winit
+// todo draw pixel grid with pixels library
+// todo tests!
+// todo implement error handling
 
 /*
     - code ingestion
@@ -56,18 +68,37 @@ fn main() {
     let bytes_read = emulator.load_program(DEFAULT_ROM);
     println!("Loaded program, bytes {}", bytes_read);
 
-    // run the code
-    loop {
-        if emulator.execute_cycle() == CycleResult::Terminated {
-            break;
+    let event_loop = EventLoop::new();
+    let window = WindowBuilder::new().build(&event_loop).unwrap();
+
+    event_loop.run(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Poll;
+
+        match event {
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } => {
+                println!("The closed button was pressed; stopping");
+                *control_flow = ControlFlow::Exit
+            }
+            Event::MainEventsCleared => {
+                if emulator.execute_cycle() == CycleResult::Terminated {
+                    println!("Emulator self terminating");
+                    *control_flow = ControlFlow::Exit;
+                }
+
+                // so that stdout prints show up when printed
+                stdout().flush().unwrap();
+                thread::sleep(CYCLE_SLEEP_DURATION);
+                window.request_redraw();
+            }
+            Event::RedrawRequested(_) => {
+                // render
+            }
+            _ => (),
         }
-
-        // so that stdout prints show up when printed
-        stdout().flush().unwrap();
-        thread::sleep(CYCLE_SLEEP_DURATION);
-    }
-
-    println!("End of program");
+    });
 }
 
 #[cfg(test)]
