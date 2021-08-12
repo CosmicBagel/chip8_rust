@@ -2,6 +2,7 @@ use std::io::{prelude::*, stdout};
 use std::thread;
 use std::time;
 
+use pixels::{Pixels, SurfaceTexture};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -71,6 +72,12 @@ fn main() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
+    let mut pixels = {
+        let window_size = window.inner_size();
+        let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
+        Pixels::new(64, 32, surface_texture).unwrap()
+    };
+
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
 
@@ -91,14 +98,27 @@ fn main() {
                 // so that stdout prints show up when printed
                 stdout().flush().unwrap();
                 thread::sleep(CYCLE_SLEEP_DURATION);
+
+                //todo only request redraw when emulator runs a visual instruction (clear, draw)
                 window.request_redraw();
             }
             Event::RedrawRequested(_) => {
+                pixel_placer(pixels.get_frame());
                 // render
+                //todo need to start properly handling errors :|
+                pixels.render();
             }
             _ => (),
         }
     });
+}
+
+fn pixel_placer(frame: &mut [u8]) {
+    for rgba_chunk in frame.chunks_exact_mut(4) {
+        // rgba
+        let colour = &[0xff, 0x00, 0x00, 0xff];
+        rgba_chunk.copy_from_slice(colour);
+    }
 }
 
 #[cfg(test)]
