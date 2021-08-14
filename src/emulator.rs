@@ -7,7 +7,10 @@ use std::io::prelude::*;
 // todo timer_counter decremented on side thread dedicated to just decrementing it at regular
 //      interval (we'll just use arc and an atomic integer)
 // todo some way to enforce the 0x200 offset when accessing memory space
-pub const MAX_MEMORY: usize = 3215;
+
+// 4kb memory, 512bytes reserved for system
+// 4096 - 512 = 3584 max bytes for apps
+pub const MAX_MEMORY: usize = 3584;
 pub const MAX_STACK: usize = 12;
 
 #[derive(Copy, Clone)]
