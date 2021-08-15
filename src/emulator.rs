@@ -1,3 +1,4 @@
+use pixels::Pixels;
 use rand::random;
 use std::fs::File;
 use std::io::prelude::*;
@@ -7,6 +8,15 @@ use std::io::prelude::*;
 // todo timer_counter decremented on side thread dedicated to just decrementing it at regular
 //      interval (we'll just use arc and an atomic integer)
 // todo some way to enforce the 0x200 offset when accessing memory space
+
+// bug we're not loading in numbers as big endian, not sure how this will affect things,
+//      will probably mostly just affect addresses as they're the only number that exceeds 1 byte
+//      may also affect saving registries to memory and vice versa
+//      might affect drawing, but again, all drawing is within 1 byte :thonking face:
+//      this will likely have to be implemented for the sake of the I register
+//      a final (serious) implication as that the instructions being loaded in all have their
+//      bytes swapped (not sure about this one, but would be hilarious) eg 0xaabb should actually
+//      be processed as 0xbbaa
 
 // 4kb memory, 512bytes reserved for system
 // 4096 - 512 = 3584 max bytes for apps
@@ -29,11 +39,13 @@ enum OpcodeResult {
     Jump(u16),
     SkipNext,
     Malformed,
+    RequestRedraw,
 }
 
 #[derive(PartialEq)]
 pub enum CycleResult {
     Working,
+    RedrawRequested,
     Terminated,
 }
 
@@ -47,11 +59,13 @@ pub struct Emulator {
     pub sound_counter: u8,
     pub program_counter: u16,
     pub subroutine_return_pointers: Vec<u16>,
+    pub screen_pixels: [bool; 64 * 32],
+    pixels_frame_buffer: Pixels,
 }
 
 impl Emulator {
-    pub fn new() -> Emulator {
-        Emulator {
+    pub fn new(p: Pixels) -> Emulator {
+        let mut emu = Emulator {
             registers: [0_u8; 16],
             address_register: 0_u16,
             memory_space: [0_u8; MAX_MEMORY],
@@ -59,12 +73,20 @@ impl Emulator {
             sound_counter: 0_u8,
             program_counter: 0x200_u16,
             subroutine_return_pointers: vec![0_u16; MAX_STACK],
-        }
+            screen_pixels: [false; 64 * 32],
+            pixels_frame_buffer: p,
+        };
+        emu.clear_screen();
+        emu
     }
 
     pub fn load_program(&mut self, file_name: &str) -> usize {
         let mut rom_file = File::open(file_name).unwrap();
         rom_file.read(&mut self.memory_space).unwrap()
+    }
+
+    pub fn pixels_render(&mut self) {
+        self.pixels_frame_buffer.render().unwrap()
     }
 
     pub fn execute_cycle(&mut self) -> CycleResult {
@@ -111,6 +133,14 @@ impl Emulator {
                     panic!("Program counter exceeded memory bounds");
                 }
             }
+            OpcodeResult::RequestRedraw => {
+                if self.program_counter + 2 < self.memory_space.len() as u16 - 1 {
+                    self.program_counter += 2;
+                } else {
+                    panic!("Program counter exceeded memory bounds");
+                }
+                return CycleResult::RedrawRequested;
+            }
         }
         CycleResult::Working
     }
@@ -150,7 +180,7 @@ impl Emulator {
         match opcode.fourth_nibble {
             0x0 => {
                 match opcode.full_opcode {
-                    0x00E0 => self.clear_screen(opcode),
+                    0x00E0 => self.clear_screen(),
                     0x00EE => self.return_from_subroutine(),
                     0x0000 => {
                         // 0x0000 EOF
@@ -460,17 +490,26 @@ impl Emulator {
         //0xFX29 Set I to the memory address of the sprite data corresponding to the
         // hexadecimal digit stored in register VX
         //TODO implement drawing
+        println!("NOT IMPLEMENTED lookup sprite for digit");
+        // this requires re-working how the memory is done,
+        // we need to provide transparent access to the sub 0x200 address space
+        // and we need to load the hex digit sprites in there at startup
+        // this requires resizing the memory pool to the full 4kb (4096 bytes)
+        // and all of the 0x200 translations need to be removed
+
         OpcodeResult::Continue
     }
 
     fn wait_for_key_and_store(&mut self, _opcode: Opcode) -> OpcodeResult {
         //0xFX0A Wait for a keypress and store the result in register VX
         //TODO implement input
+        println!("NOT IMPLEMENTED wait for key and store");
         OpcodeResult::Continue
     }
 
     fn skip_next_if_key_is_down(&mut self, _opcode: Opcode) -> OpcodeResult {
         //TODO implement input
+        println!("NOT IMPLEMENTED skip next if key is down");
         // 0xEX9E Skip the following instruction if the key corresponding to the hex value
         // currently stored in register VX is pressed
 
@@ -483,8 +522,27 @@ impl Emulator {
         // 0xDXYN Draw a sprite at position VX, VY with N bytes of sprite data starting at the
         //address stored in I
         //Set VF to 01 if any set pixels are changed to unset, and 00 otherwise
+
+        //a sprite can only be a max of 8 pixels wide, and 15 pixels tall
+        //8 bits = 1 byte, the width
+        //15 bytes, the height
+        //we jump down to the next line of pixels at the end of each byte
+
+        // black is the default window fill
+        // white is the default pixel fill while initializing
+        // red will be our unset colour (0x0)
+        // blue will be our set colour (0x1)
+
         //TODO draw sprite
-        OpcodeResult::Continue
+        println!("NOT IMPLEMENTED draw sprite");
+        let frame = self.pixels_frame_buffer.get_frame();
+        for rgba_chunk in frame.chunks_exact_mut(4) {
+            // rgba
+            let colour = &[0xff, 0x00, 0x00, 0xff];
+            rgba_chunk.copy_from_slice(colour);
+        }
+
+        OpcodeResult::RequestRedraw
     }
 
     fn jump(&mut self, opcode: Opcode) -> OpcodeResult {
@@ -492,10 +550,21 @@ impl Emulator {
         OpcodeResult::Jump(opcode.full_opcode & 0x0FFF)
     }
 
-    fn clear_screen(&mut self, _opcode: Opcode) -> OpcodeResult {
+    fn clear_screen(&mut self) -> OpcodeResult {
         //0x00E0 Clear the screen
         //TODO implement clear screen
+
+        // black is the default window fill
+        // white is the default pixel fill while initializing
+        // red will be our unset colour (0x0)
+        // blue will be our set colour (0x1)
         println!("NOT IMPLEMENTED clear the screen");
-        OpcodeResult::Continue
+        let frame = self.pixels_frame_buffer.get_frame();
+        for rgba_chunk in frame.chunks_exact_mut(4) {
+            // rgba
+            let colour = &[0xff, 0x00, 0x00, 0xff];
+            rgba_chunk.copy_from_slice(colour);
+        }
+        OpcodeResult::RequestRedraw
     }
 }

@@ -65,18 +65,19 @@ fn main() {
     // (code is allowed to be self modifying (ie no write protection region))
     // error on any address read/write below 0x200
 
-    let mut emulator = Emulator::new();
-    let bytes_read = emulator.load_program(DEFAULT_ROM);
-    println!("Loaded program, bytes {}", bytes_read);
-
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
-    let mut pixels = {
+    let pixels = {
         let window_size = window.inner_size();
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
         Pixels::new(64, 32, surface_texture).unwrap()
     };
+
+    let mut emulator = Emulator::new(pixels);
+    let bytes_read = emulator.load_program(DEFAULT_ROM);
+    println!("Loaded program, bytes {}", bytes_read);
+    window.request_redraw();
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
@@ -89,36 +90,27 @@ fn main() {
                 println!("The closed button was pressed; stopping");
                 *control_flow = ControlFlow::Exit
             }
+
             Event::MainEventsCleared => {
-                if emulator.execute_cycle() == CycleResult::Terminated {
-                    println!("Emulator self terminating");
-                    *control_flow = ControlFlow::Exit;
+                match emulator.execute_cycle() {
+                    CycleResult::Terminated => {
+                        println!("Emulator self terminating");
+                        *control_flow = ControlFlow::Exit;
+                    }
+                    CycleResult::RedrawRequested => window.request_redraw(),
+                    _ => (),
                 }
 
                 // so that stdout prints show up when printed
                 stdout().flush().unwrap();
                 thread::sleep(CYCLE_SLEEP_DURATION);
-
-                //todo only request redraw when emulator runs a visual instruction (clear, draw)
-                window.request_redraw();
             }
             Event::RedrawRequested(_) => {
-                pixel_placer(pixels.get_frame());
-                // render
-                //todo need to start properly handling errors :|
-                pixels.render();
+                emulator.pixels_render();
             }
             _ => (),
         }
     });
-}
-
-fn pixel_placer(frame: &mut [u8]) {
-    for rgba_chunk in frame.chunks_exact_mut(4) {
-        // rgba
-        let colour = &[0xff, 0x00, 0x00, 0xff];
-        rgba_chunk.copy_from_slice(colour);
-    }
 }
 
 #[cfg(test)]
