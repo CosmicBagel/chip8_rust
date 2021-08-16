@@ -561,8 +561,8 @@ impl Emulator {
         //we jump down to the next line of pixels at the end of each byte
 
         let frame = self.pixels_frame_buffer.get_frame();
-        let x_origin = opcode.third_nibble as usize;
-        let y_origin = opcode.second_nibble as usize;
+        let x_origin = self.registers[opcode.third_nibble as usize] as usize;
+        let y_origin = self.registers[opcode.second_nibble as usize] as usize;
         // println!("x: {} y: {}", x_origin, y_origin);
         self.registers[0xF] = 0x0;
 
@@ -573,7 +573,7 @@ impl Emulator {
         for (row, byte) in sprite_slice.iter().enumerate() {
             for bit_index in 0..8u8 {
                 let bit = byte & (1 << bit_index);
-                let pixel_ind = (x_origin + (7 - bit_index) as usize + (y_origin + row * 64)) * 4;
+                let pixel_ind = (x_origin + (7 - bit_index) as usize + ((y_origin + row) * 64)) * 4;
                 let p = &mut frame[pixel_ind..pixel_ind + 4];
 
                 if bit != 0 {
