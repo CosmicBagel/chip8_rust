@@ -15,7 +15,7 @@ use emulator::*;
 
 const DEFAULT_ROM: &str = "roms/test_opcode.ch8";
 const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
-const CYCLES_PER_SLEEP: u8 = 10;
+const INSTRUCTIONS_PER_CYCLE: u8 = 10;
 
 // general todo
 // todo get windowing up and running with winit
@@ -115,13 +115,14 @@ fn main() {
             }
 
             Event::MainEventsCleared => {
-                for _ in 1..CYCLES_PER_SLEEP {
-                    match emulator.execute_cycle() {
-                        CycleResult::Terminated => {
+                emulator.update_time_counters();
+                for _ in 1..INSTRUCTIONS_PER_CYCLE {
+                    match emulator.execute_next_instruction() {
+                        InstructionResult::Terminated => {
                             println!("Emulator self terminating");
                             *control_flow = ControlFlow::Exit;
                         }
-                        CycleResult::RedrawRequested => window.request_redraw(),
+                        InstructionResult::RedrawRequested => window.request_redraw(),
                         _ => (),
                     }
                 }

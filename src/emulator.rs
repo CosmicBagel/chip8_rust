@@ -70,7 +70,7 @@ enum OpcodeResult {
 }
 
 #[derive(PartialEq)]
-pub enum CycleResult {
+pub enum InstructionResult {
     Working,
     RedrawRequested,
     Terminated,
@@ -123,7 +123,7 @@ impl Emulator {
             .resize_surface(size.width, size.height);
     }
 
-    pub fn execute_cycle(&mut self) -> CycleResult {
+    pub fn update_time_counters(&mut self) {
         // since we're sleep for 16 ms per cycle, this will very roughly approximate 60hz
         if self.timer_counter > 0 {
             self.timer_counter -= 1;
@@ -131,14 +131,16 @@ impl Emulator {
         if self.sound_counter > 0 {
             self.sound_counter -= 1;
         }
+    }
 
+    pub fn execute_next_instruction(&mut self) -> InstructionResult {
         let opcode = self.load_opcode();
         let opcode_result = self.process_opcode(opcode);
 
         match opcode_result {
             OpcodeResult::Terminate => {
                 println!("Terminating");
-                return CycleResult::Terminated;
+                return InstructionResult::Terminated;
             }
             OpcodeResult::Jump(target) => {
                 if target < self.memory_space.len() as u16 - 1 {
@@ -173,10 +175,10 @@ impl Emulator {
                 } else {
                     panic!("Program counter exceeded memory bounds");
                 }
-                return CycleResult::RedrawRequested;
+                return InstructionResult::RedrawRequested;
             }
         }
-        CycleResult::Working
+        InstructionResult::Working
     }
 
     fn load_opcode(&self) -> Opcode {
