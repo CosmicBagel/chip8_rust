@@ -3,6 +3,7 @@ use std::thread;
 use std::time;
 
 use pixels::{Pixels, SurfaceTexture};
+use winit::event::{KeyboardInput, ScanCode};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -92,6 +93,20 @@ fn main() {
             } => {
                 println!("The closed button was pressed; stopping");
                 *control_flow = ControlFlow::Exit
+            }
+            Event::WindowEvent {
+                event:
+                    WindowEvent::KeyboardInput {
+                        input: KeyboardInput { scancode, .. },
+                        ..
+                    },
+                ..
+            } => {
+                if scancode == 0x001 {
+                    // escape hit
+                    println!("Escape key hit, closing");
+                    *control_flow = ControlFlow::Exit;
+                }
             }
 
             Event::MainEventsCleared => {
