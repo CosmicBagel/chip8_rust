@@ -22,6 +22,12 @@ use std::io::prelude::*;
 const MAX_MEMORY: usize = 4096;
 const MAX_STACK: usize = 12;
 
+// black is the default window fill
+// white is the default pixel fill while initializing
+// https://coolors.co/89b6a5-4c3b4d-c9eddc-82968c-6a706e
+const SET_COLOUR: [u8; 4] = [0x4c, 0x3b, 0x4d, 0xFF];
+const UNSET_COLOUR: [u8; 4] = [0x89, 0xb6, 0xa5, 0xFF];
+
 //built-in hex sprites, taken from http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.5
 const BUILTIN_SPRITES: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // zero
@@ -41,6 +47,7 @@ const BUILTIN_SPRITES: [u8; 80] = [
     0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
     0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 ];
+
 #[derive(Copy, Clone)]
 struct Opcode {
     full_opcode: u16,
@@ -536,7 +543,7 @@ impl Emulator {
         OpcodeResult::Continue
     }
 
-    fn draw_sprite(&mut self, _opcode: Opcode) -> OpcodeResult {
+    fn draw_sprite(&mut self, opcode: Opcode) -> OpcodeResult {
         // 0xDXYN Draw a sprite at position VX, VY with N bytes of sprite data starting at the
         //address stored in I
         //Set VF to 01 if any set pixels are changed to unset, and 00 otherwise
@@ -546,18 +553,33 @@ impl Emulator {
         //15 bytes, the height
         //we jump down to the next line of pixels at the end of each byte
 
-        // black is the default window fill
-        // white is the default pixel fill while initializing
-        // red will be our unset colour (0x0)
-        // blue will be our set colour (0x1)
-
-        //TODO draw sprite
-        println!("NOT IMPLEMENTED draw sprite");
         let frame = self.pixels_frame_buffer.get_frame();
-        for rgba_chunk in frame.chunks_exact_mut(4) {
-            // rgba
-            let colour = &[0xff, 0x00, 0x00, 0xff];
-            rgba_chunk.copy_from_slice(colour);
+        let x_origin = opcode.third_nibble as usize;
+        let y_origin = opcode.second_nibble as usize;
+        // println!("x: {} y: {}", x_origin, y_origin);
+        self.registers[0xF] = 0x0;
+
+        let start = self.address_register as usize;
+        let end = start + opcode.first_nibble as usize;
+        let sprite_slice = &self.memory_space[start..end];
+
+        for (row, byte) in sprite_slice.iter().enumerate() {
+            for bit_index in 0..8u8 {
+                let bit = byte & (1 << bit_index);
+                let pixel_ind = (x_origin + (7 - bit_index) as usize + (y_origin + row * 64)) * 4;
+                let p = &mut frame[pixel_ind..pixel_ind + 4];
+
+                if bit != 0 {
+                    //set the pixel
+                    p.copy_from_slice(&SET_COLOUR);
+                } else {
+                    //unset the pixel
+                    if p == SET_COLOUR {
+                        self.registers[0xF] = 0x1;
+                        p.copy_from_slice(&UNSET_COLOUR);
+                    }
+                }
+            }
         }
 
         OpcodeResult::RequestRedraw
@@ -577,16 +599,10 @@ impl Emulator {
         //0x00E0 Clear the screen
         //TODO implement clear screen
 
-        // black is the default window fill
-        // white is the default pixel fill while initializing
-        // red will be our unset colour (0x0)
-        // blue will be our set colour (0x1)
-        println!("NOT IMPLEMENTED clear the screen");
         let frame = self.pixels_frame_buffer.get_frame();
         for rgba_chunk in frame.chunks_exact_mut(4) {
             // rgba
-            let colour = &[0xff, 0x00, 0x00, 0xff];
-            rgba_chunk.copy_from_slice(colour);
+            rgba_chunk.copy_from_slice(&UNSET_COLOUR);
         }
         OpcodeResult::RequestRedraw
     }
