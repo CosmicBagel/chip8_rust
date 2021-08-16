@@ -2,6 +2,7 @@ use pixels::Pixels;
 use rand::random;
 use std::fs::File;
 use std::io::prelude::*;
+use winit::dpi::PhysicalSize;
 
 //refactor todo list
 // todo newtypes for address and registers and maybe program counter
@@ -115,6 +116,11 @@ impl Emulator {
 
     pub fn pixels_render(&mut self) {
         self.pixels_frame_buffer.render().unwrap()
+    }
+
+    pub fn pixels_surface_resize(&mut self, size: PhysicalSize<u32>) {
+        self.pixels_frame_buffer
+            .resize_surface(size.width, size.height);
     }
 
     pub fn execute_cycle(&mut self) -> CycleResult {

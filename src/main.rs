@@ -95,6 +95,10 @@ fn main() {
                 *control_flow = ControlFlow::Exit
             }
             Event::WindowEvent {
+                event: WindowEvent::Resized(size),
+                ..
+            } => emulator.pixels_surface_resize(size),
+            Event::WindowEvent {
                 event:
                     WindowEvent::KeyboardInput {
                         input: KeyboardInput { scancode, .. },
