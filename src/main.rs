@@ -3,7 +3,7 @@ use std::thread;
 use std::time;
 
 use pixels::{Pixels, SurfaceTexture};
-use winit::event::{KeyboardInput, ScanCode};
+use winit::event::KeyboardInput;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
