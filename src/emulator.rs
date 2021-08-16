@@ -527,7 +527,7 @@ impl Emulator {
         // we have our built-in sprites at the start of the system memory,
         // they're in order of the hex values (0-F), and each one is 5 bytes big
         // so we can just use the requested hex sprite as an address multiplier
-        self.address_register = opcode.third_nibble as u16 * 5;
+        self.address_register = self.registers[opcode.third_nibble as usize] as u16 * 5;
 
         OpcodeResult::Continue
     }
