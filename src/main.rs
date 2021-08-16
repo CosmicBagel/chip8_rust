@@ -1,3 +1,5 @@
+mod tests;
+
 use std::io::{prelude::*, stdout};
 use std::thread;
 use std::time;
@@ -144,21 +146,4 @@ fn init() -> (EventLoop<()>, winit::window::Window, Emulator) {
     };
     let mut emulator = Emulator::new(pixels);
     (event_loop, window, emulator)
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn jump_test() {
-        let mut emu = Emulator::new_headless();
-        let result = emu.execute_instruction(0x1200.into());
-
-        assert!(result == InstructionResult::Working);
-        assert!(emu.program_counter == 0x200);
-
-        let result = emu.execute_instruction(0x1500.into());
-        assert!(result == InstructionResult::Working);
-        assert!(emu.program_counter == 0x500);
-    }
 }
