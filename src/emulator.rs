@@ -25,8 +25,9 @@ const MAX_STACK: usize = 12;
 // black is the default window fill
 // white is the default pixel fill while initializing
 // https://coolors.co/89b6a5-4c3b4d-c9eddc-82968c-6a706e
-const SET_COLOUR: [u8; 4] = [0x4c, 0x3b, 0x4d, 0xFF];
-const UNSET_COLOUR: [u8; 4] = [0x89, 0xb6, 0xa5, 0xFF];
+// https://coolors.co/14110f-34312d-7e7f83-d9c5b2-f3f3f4
+const SET_COLOUR: [u8; 4] = [0xF3, 0xF3, 0xF4, 0xFF];
+const UNSET_COLOUR: [u8; 4] = [0x14, 0x11, 0x0F, 0xFF];
 
 //built-in hex sprites, taken from http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.5
 const BUILTIN_SPRITES: [u8; 80] = [
