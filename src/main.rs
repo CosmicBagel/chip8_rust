@@ -15,6 +15,7 @@ use emulator::*;
 
 const DEFAULT_ROM: &str = "roms/test_opcode.ch8";
 const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
+const CYCLES_PER_SLEEP: u8 = 10;
 
 // general todo
 // todo get windowing up and running with winit
@@ -114,13 +115,15 @@ fn main() {
             }
 
             Event::MainEventsCleared => {
-                match emulator.execute_cycle() {
-                    CycleResult::Terminated => {
-                        println!("Emulator self terminating");
-                        *control_flow = ControlFlow::Exit;
+                for _ in 1..CYCLES_PER_SLEEP {
+                    match emulator.execute_cycle() {
+                        CycleResult::Terminated => {
+                            println!("Emulator self terminating");
+                            *control_flow = ControlFlow::Exit;
+                        }
+                        CycleResult::RedrawRequested => window.request_redraw(),
+                        _ => (),
                     }
-                    CycleResult::RedrawRequested => window.request_redraw(),
-                    _ => (),
                 }
 
                 // so that stdout prints show up when printed
