@@ -66,7 +66,10 @@ fn main() {
     // error on any address read/write below 0x200
 
     let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().build(&event_loop).unwrap();
+    let window = WindowBuilder::new()
+        .with_title("chip8_rust")
+        .build(&event_loop)
+        .unwrap();
 
     let pixels = {
         let window_size = window.inner_size();
