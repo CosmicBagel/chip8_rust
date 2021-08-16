@@ -502,10 +502,11 @@ impl Emulator {
         //0xFX55 Store the values of registers V0 to VX inclusive in memory starting at
         // address I
         //I is set to I + X + 1 after operation
-        for reg_index in 0..opcode.third_nibble {
+        for reg_index in 0..(opcode.third_nibble + 1) {
             let write_address = self.address_register + reg_index as u16;
             self.memory_space[write_address as usize] = self.registers[reg_index as usize];
         }
+        self.address_register += opcode.third_nibble as u16 + 1;
         OpcodeResult::Continue
     }
 
@@ -513,10 +514,11 @@ impl Emulator {
         //0xFX65 Fill registers V0 to VX inclusive with the values stored in memory starting
         // at address I
         //I is set to I + X + 1 after operation
-        for reg_index in 0..opcode.third_nibble {
+        for reg_index in 0..(opcode.third_nibble + 1) {
             let read_address = self.address_register + reg_index as u16;
             self.registers[reg_index as usize] = self.memory_space[read_address as usize];
         }
+        self.address_register += opcode.third_nibble as u16 + 1;
         OpcodeResult::Continue
     }
 
