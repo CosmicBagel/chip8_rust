@@ -50,17 +50,17 @@ pub enum CycleResult {
 }
 
 pub struct Emulator {
-    pub registers: [u8; 16],
+    registers: [u8; 16],
     // although we need usize to access the array that the instructions are stored in
     // its better to explicitly say u16 as usize can technically be as small as u8
-    pub address_register: u16,
-    pub memory_space: [u8; MAX_MEMORY],
-    pub timer_counter: u8,
-    pub sound_counter: u8,
-    pub program_counter: u16,
-    pub subroutine_return_pointers: Vec<u16>,
-    pub screen_pixels: [bool; 64 * 32],
+    address_register: u16,
+    memory_space: [u8; MAX_MEMORY],
+    timer_counter: u8,
+    sound_counter: u8,
+    program_counter: u16,
+    subroutine_return_pointers: Vec<u16>,
     pixels_frame_buffer: Pixels,
+    end_loop_reached: bool,
 }
 
 impl Emulator {
@@ -73,8 +73,8 @@ impl Emulator {
             sound_counter: 0_u8,
             program_counter: 0x200_u16,
             subroutine_return_pointers: vec![0_u16; MAX_STACK],
-            screen_pixels: [false; 64 * 32],
             pixels_frame_buffer: p,
+            end_loop_reached: false,
         };
         emu.clear_screen();
         emu
@@ -165,7 +165,7 @@ impl Emulator {
         opcode.full_opcode = (opcode.left_byte as u16) << 8;
         opcode.full_opcode |= opcode.right_byte as u16;
 
-        print!("{:02x?}{:02x?}, ", opcode.left_byte, opcode.right_byte,);
+        // print!("{:02x?}{:02x?}, ", opcode.left_byte, opcode.right_byte,);
 
         opcode
     }
@@ -547,7 +547,12 @@ impl Emulator {
 
     fn jump(&mut self, opcode: Opcode) -> OpcodeResult {
         //0x1NNN Jump to address NNN
-        OpcodeResult::Jump(opcode.full_opcode & 0x0FFF)
+        let target = opcode.full_opcode & 0x0FFF;
+        if target == self.program_counter && !self.end_loop_reached {
+            self.end_loop_reached = true;
+            println!("End of program loop reached");
+        }
+        OpcodeResult::Jump(target)
     }
 
     fn clear_screen(&mut self) -> OpcodeResult {
