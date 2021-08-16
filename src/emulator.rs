@@ -487,14 +487,16 @@ impl Emulator {
         //VX at addresses I, I + 1, and I + 2
 
         let mut value = self.registers[opcode.third_nibble as usize];
-        let hundreds = value % 100;
-        value -= hundreds;
-        let tens = value % 10;
+        let ones = value % 0xA;
+        value -= ones;
+        let tens = value % 0x64;
         value -= tens;
+        let hundreds = value;
+
         let base_address = self.address_register as usize;
         self.memory_space[base_address] = hundreds;
         self.memory_space[base_address + 1] = tens;
-        self.memory_space[base_address + 2] = value;
+        self.memory_space[base_address + 2] = ones;
         OpcodeResult::Continue
     }
 
