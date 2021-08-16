@@ -51,7 +51,7 @@ const BUILTIN_SPRITES: [u8; 80] = [
 ];
 
 #[derive(Copy, Clone)]
-struct Opcode {
+pub struct Opcode {
     full_opcode: u16,
     left_byte: u8,
     right_byte: u8,
@@ -60,6 +60,66 @@ struct Opcode {
     second_nibble: u8,
     first_nibble: u8,
 }
+
+impl Opcode {
+    pub fn new_from_bytes(left_byte: u8, right_byte: u8) -> Opcode {
+        let mut opcode = Opcode {
+            full_opcode: 0,
+            left_byte,
+            right_byte,
+            fourth_nibble: 0,
+            third_nibble: 0,
+            second_nibble: 0,
+            first_nibble: 0,
+        };
+
+        opcode.fourth_nibble = (0xF0 & opcode.left_byte) >> 4;
+        opcode.third_nibble = 0x0F & opcode.left_byte;
+        opcode.second_nibble = (0xF0 & opcode.right_byte) >> 4;
+        opcode.first_nibble = 0x0F & opcode.right_byte;
+
+        opcode.full_opcode = (opcode.left_byte as u16) << 8;
+        opcode.full_opcode |= opcode.right_byte as u16;
+
+        opcode
+    }
+
+    pub fn new(code: u16) -> Opcode {
+        let mut opcode = Opcode {
+            full_opcode: code,
+            left_byte: 0,
+            right_byte: 0,
+            fourth_nibble: 0,
+            third_nibble: 0,
+            second_nibble: 0,
+            first_nibble: 0,
+        };
+
+        opcode.left_byte = (code >> 8) as u8;
+        opcode.right_byte = (code & 0x00FF) as u8;
+
+        opcode.fourth_nibble = (0xF0 & opcode.left_byte) >> 4;
+        opcode.third_nibble = 0x0F & opcode.left_byte;
+        opcode.second_nibble = (0xF0 & opcode.right_byte) >> 4;
+        opcode.first_nibble = 0x0F & opcode.right_byte;
+
+        opcode
+    }
+}
+
+impl From<u16> for Opcode {
+    fn from(code: u16) -> Self {
+        Opcode::new(code)
+    }
+}
+
+impl From<(u8, u8)> for Opcode {
+    fn from(code_tuple: (u8, u8)) -> Self {
+        Opcode::new_from_bytes(code_tuple.0, code_tuple.1)
+    }
+}
+
+#[derive(PartialEq)]
 enum OpcodeResult {
     Continue,
     Terminate,
@@ -77,21 +137,21 @@ pub enum InstructionResult {
 }
 
 pub struct Emulator {
-    registers: [u8; 16],
+    pub registers: [u8; 16],
     // although we need usize to access the array that the instructions are stored in
     // its better to explicitly say u16 as usize can technically be as small as u8
-    address_register: u16,
-    memory_space: [u8; MAX_MEMORY],
-    timer_counter: u8,
-    sound_counter: u8,
-    program_counter: u16,
-    subroutine_return_pointers: Vec<u16>,
-    pixels_frame_buffer: Pixels,
-    end_loop_reached: bool,
+    pub address_register: u16,
+    pub memory_space: [u8; MAX_MEMORY],
+    pub timer_counter: u8,
+    pub sound_counter: u8,
+    pub program_counter: u16,
+    pub subroutine_return_pointers: Vec<u16>,
+    pub pixels_frame_buffer: Option<Pixels>, // is option to support headless mode (for testing)
+    pub end_loop_reached: bool,
 }
 
 impl Emulator {
-    pub fn new(p: Pixels) -> Emulator {
+    pub fn new(p: Pixels) -> Self {
         let mut emu = Emulator {
             registers: [0_u8; 16],
             address_register: 0_u16,
@@ -100,7 +160,7 @@ impl Emulator {
             sound_counter: 0_u8,
             program_counter: 0x200_u16,
             subroutine_return_pointers: vec![0_u16; MAX_STACK],
-            pixels_frame_buffer: p,
+            pixels_frame_buffer: Some(p),
             end_loop_reached: false,
         };
         // fill first 80 bytes of memory with out built-in hex digit sprites
@@ -109,18 +169,43 @@ impl Emulator {
         emu
     }
 
+    pub fn new_headless() -> Self {
+        let mut emu = Emulator {
+            registers: [0_u8; 16],
+            address_register: 0_u16,
+            memory_space: [0_u8; MAX_MEMORY],
+            timer_counter: 0_u8,
+            sound_counter: 0_u8,
+            program_counter: 0x200_u16,
+            subroutine_return_pointers: vec![0_u16; MAX_STACK],
+            pixels_frame_buffer: None,
+            end_loop_reached: false,
+        };
+        // fill first 80 bytes of memory with out built-in hex digit sprites
+        emu.memory_space[..80].copy_from_slice(&BUILTIN_SPRITES);
+        emu
+    }
+
     pub fn load_program(&mut self, file_name: &str) -> usize {
         let mut rom_file = File::open(file_name).unwrap();
         rom_file.read(&mut self.memory_space[0x200..]).unwrap()
     }
 
+    pub fn inject_program(&mut self, opcodes: &[u8]) {
+        let end = opcodes.len() + 0x200;
+        self.memory_space[0x200..end].copy_from_slice(opcodes);
+    }
+
     pub fn pixels_render(&mut self) {
-        self.pixels_frame_buffer.render().unwrap()
+        if let Some(p) = &mut self.pixels_frame_buffer {
+            p.render().unwrap()
+        }
     }
 
     pub fn pixels_surface_resize(&mut self, size: PhysicalSize<u32>) {
-        self.pixels_frame_buffer
-            .resize_surface(size.width, size.height);
+        if let Some(p) = &mut self.pixels_frame_buffer {
+            p.resize_surface(size.width, size.height);
+        }
     }
 
     pub fn update_time_counters(&mut self) {
@@ -134,9 +219,19 @@ impl Emulator {
     }
 
     pub fn execute_next_instruction(&mut self) -> InstructionResult {
-        let opcode = self.load_opcode();
-        let opcode_result = self.process_opcode(opcode);
+        let pc = self.program_counter as usize;
+        let left_byte = self.memory_space[pc];
+        let right_byte = self.memory_space[pc + 1];
+        let opcode: Opcode = (left_byte, right_byte).into();
+        if !self.end_loop_reached {
+            print!("{:02x?}{:02x?}, ", opcode.left_byte, opcode.right_byte,);
+        }
 
+        self.execute_instruction(opcode)
+    }
+
+    pub fn execute_instruction(&mut self, opcode: Opcode) -> InstructionResult {
+        let opcode_result = self.process_opcode(opcode);
         match opcode_result {
             OpcodeResult::Terminate => {
                 println!("Terminating");
@@ -181,33 +276,8 @@ impl Emulator {
         InstructionResult::Working
     }
 
-    fn load_opcode(&self) -> Opcode {
-        let translated_address = self.program_counter as usize;
-        let mut opcode = Opcode {
-            full_opcode: 0,
-            left_byte: self.memory_space[translated_address],
-            right_byte: self.memory_space[translated_address as usize + 1],
-            fourth_nibble: 0,
-            third_nibble: 0,
-            second_nibble: 0,
-            first_nibble: 0,
-        };
-
-        opcode.fourth_nibble = (0xF0 & opcode.left_byte) >> 4;
-        opcode.third_nibble = 0x0F & opcode.left_byte;
-        opcode.second_nibble = (0xF0 & opcode.right_byte) >> 4;
-        opcode.first_nibble = 0x0F & opcode.right_byte;
-
-        opcode.full_opcode = (opcode.left_byte as u16) << 8;
-        opcode.full_opcode |= opcode.right_byte as u16;
-
-        // print!("{:02x?}{:02x?}, ", opcode.left_byte, opcode.right_byte,);
-
-        opcode
-    }
-
     // returns desired program counter location
-    fn process_opcode(&mut self, opcode: Opcode) -> OpcodeResult {
+    pub fn process_opcode(&mut self, opcode: Opcode) -> OpcodeResult {
         // NNN refers to 0x0NNN parts of the opcode being processed
 
         // https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
@@ -566,30 +636,34 @@ impl Emulator {
         //15 bytes, the height
         //we jump down to the next line of pixels at the end of each byte
 
-        let frame = self.pixels_frame_buffer.get_frame();
-        let x_origin = self.registers[opcode.third_nibble as usize] as usize;
-        let y_origin = self.registers[opcode.second_nibble as usize] as usize;
-        // println!("x: {} y: {}", x_origin, y_origin);
-        self.registers[0xF] = 0x0;
+        if let Some(buffer) = &mut self.pixels_frame_buffer {
+            let frame = buffer.get_frame();
 
-        let start = self.address_register as usize;
-        let end = start + opcode.first_nibble as usize;
-        let sprite_slice = &self.memory_space[start..end];
+            let x_origin = self.registers[opcode.third_nibble as usize] as usize;
+            let y_origin = self.registers[opcode.second_nibble as usize] as usize;
+            // println!("x: {} y: {}", x_origin, y_origin);
+            self.registers[0xF] = 0x0;
 
-        for (row, byte) in sprite_slice.iter().enumerate() {
-            for bit_index in 0..8u8 {
-                let bit = byte & (1 << bit_index);
-                let pixel_ind = (x_origin + (7 - bit_index) as usize + ((y_origin + row) * 64)) * 4;
-                let p = &mut frame[pixel_ind..pixel_ind + 4];
+            let start = self.address_register as usize;
+            let end = start + opcode.first_nibble as usize;
+            let sprite_slice = &self.memory_space[start..end];
 
-                if bit != 0 {
-                    //set the pixel
-                    p.copy_from_slice(&SET_COLOUR);
-                } else {
-                    //unset the pixel
-                    if p == SET_COLOUR {
-                        self.registers[0xF] = 0x1;
-                        p.copy_from_slice(&UNSET_COLOUR);
+            for (row, byte) in sprite_slice.iter().enumerate() {
+                for bit_index in 0..8u8 {
+                    let bit = byte & (1 << bit_index);
+                    let pixel_ind =
+                        (x_origin + (7 - bit_index) as usize + ((y_origin + row) * 64)) * 4;
+                    let p = &mut frame[pixel_ind..pixel_ind + 4];
+
+                    if bit != 0 {
+                        //set the pixel
+                        p.copy_from_slice(&SET_COLOUR);
+                    } else {
+                        //unset the pixel
+                        if p == SET_COLOUR {
+                            self.registers[0xF] = 0x1;
+                            p.copy_from_slice(&UNSET_COLOUR);
+                        }
                     }
                 }
             }
@@ -612,10 +686,12 @@ impl Emulator {
         //0x00E0 Clear the screen
         //TODO implement clear screen
 
-        let frame = self.pixels_frame_buffer.get_frame();
-        for rgba_chunk in frame.chunks_exact_mut(4) {
-            // rgba
-            rgba_chunk.copy_from_slice(&UNSET_COLOUR);
+        if let Some(p_buf) = &mut self.pixels_frame_buffer {
+            let frame = p_buf.get_frame();
+            for rgba_chunk in frame.chunks_exact_mut(4) {
+                // rgba
+                rgba_chunk.copy_from_slice(&UNSET_COLOUR);
+            }
         }
         OpcodeResult::RequestRedraw
     }

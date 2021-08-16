@@ -13,7 +13,10 @@ use winit::{
 mod emulator;
 use emulator::*;
 
-const DEFAULT_ROM: &str = "roms/test_opcode.ch8";
+// when using the c8_test rom, refer to this documentation https://github.com/Skosulor/c8int/blob/master/test/chip8_test.txt
+
+const DEFAULT_ROM: &str = "roms/c8_test.c8";
+// const DEFAULT_ROM: &str = "roms/test_opcode.ch8";
 const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
 const INSTRUCTIONS_PER_CYCLE: u8 = 10;
 
@@ -67,19 +70,8 @@ fn main() {
     // (code is allowed to be self modifying (ie no write protection region))
     // error on any address read/write below 0x200
 
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new()
-        .with_title("chip8_rust")
-        .build(&event_loop)
-        .unwrap();
+    let (event_loop, window, mut emulator) = init();
 
-    let pixels = {
-        let window_size = window.inner_size();
-        let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        Pixels::new(64, 32, surface_texture).unwrap()
-    };
-
-    let mut emulator = Emulator::new(pixels);
     let bytes_read = emulator.load_program(DEFAULT_ROM);
     println!("Loaded program, bytes {}", bytes_read);
     window.request_redraw();
@@ -139,11 +131,34 @@ fn main() {
     });
 }
 
+fn init() -> (EventLoop<()>, winit::window::Window, Emulator) {
+    let event_loop = EventLoop::new();
+    let window = WindowBuilder::new()
+        .with_title("chip8_rust")
+        .build(&event_loop)
+        .unwrap();
+    let pixels = {
+        let window_size = window.inner_size();
+        let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
+        Pixels::new(64, 32, surface_texture).unwrap()
+    };
+    let mut emulator = Emulator::new(pixels);
+    (event_loop, window, emulator)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     #[test]
-    fn jazz() {
-        assert!(false);
+    fn jump_test() {
+        let mut emu = Emulator::new_headless();
+        let result = emu.execute_instruction(0x1200.into());
+
+        assert!(result == InstructionResult::Working);
+        assert!(emu.program_counter == 0x200);
+
+        let result = emu.execute_instruction(0x1500.into());
+        assert!(result == InstructionResult::Working);
+        assert!(emu.program_counter == 0x500);
     }
 }
