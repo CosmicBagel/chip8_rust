@@ -159,7 +159,7 @@ impl Emulator {
             timer_counter: 0_u8,
             sound_counter: 0_u8,
             program_counter: 0x200_u16,
-            subroutine_return_pointers: vec![0_u16; MAX_STACK],
+            subroutine_return_pointers: Vec::new(),
             pixels_frame_buffer: Some(p),
             end_loop_reached: false,
         };
@@ -177,7 +177,7 @@ impl Emulator {
             timer_counter: 0_u8,
             sound_counter: 0_u8,
             program_counter: 0x200_u16,
-            subroutine_return_pointers: vec![0_u16; MAX_STACK],
+            subroutine_return_pointers: Vec::new(),
             pixels_frame_buffer: None,
             end_loop_reached: false,
         };
