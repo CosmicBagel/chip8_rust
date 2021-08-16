@@ -7,7 +7,6 @@ use std::io::prelude::*;
 // todo newtypes for address and registers and maybe program counter
 // todo timer_counter decremented on side thread dedicated to just decrementing it at regular
 //      interval (we'll just use arc and an atomic integer)
-// todo some way to enforce the 0x200 offset when accessing memory space
 
 // bug we're not loading in numbers as big endian, not sure how this will affect things,
 //      will probably mostly just affect addresses as they're the only number that exceeds 1 byte
@@ -20,8 +19,8 @@ use std::io::prelude::*;
 
 // 4kb memory, 512bytes reserved for system
 // 4096 - 512 = 3584 max bytes for apps
-pub const MAX_MEMORY: usize = 3584;
-pub const MAX_STACK: usize = 12;
+const MAX_MEMORY: usize = 4096;
+const MAX_STACK: usize = 12;
 
 #[derive(Copy, Clone)]
 struct Opcode {
@@ -82,7 +81,7 @@ impl Emulator {
 
     pub fn load_program(&mut self, file_name: &str) -> usize {
         let mut rom_file = File::open(file_name).unwrap();
-        rom_file.read(&mut self.memory_space).unwrap()
+        rom_file.read(&mut self.memory_space[0x200..]).unwrap()
     }
 
     pub fn pixels_render(&mut self) {
@@ -146,7 +145,7 @@ impl Emulator {
     }
 
     fn load_opcode(&self) -> Opcode {
-        let translated_address = self.program_counter as usize - 0x200;
+        let translated_address = self.program_counter as usize;
         let mut opcode = Opcode {
             full_opcode: 0,
             left_byte: self.memory_space[translated_address],
@@ -457,7 +456,7 @@ impl Emulator {
         value -= hundreds;
         let tens = value % 10;
         value -= tens;
-        let base_address = (self.address_register - 0x200) as usize;
+        let base_address = self.address_register as usize;
         self.memory_space[base_address] = hundreds;
         self.memory_space[base_address + 1] = tens;
         self.memory_space[base_address + 2] = value;
@@ -469,7 +468,7 @@ impl Emulator {
         // address I
         //I is set to I + X + 1 after operation
         for reg_index in 0..opcode.third_nibble {
-            let write_address = self.address_register - 0x200 + reg_index as u16;
+            let write_address = self.address_register + reg_index as u16;
             self.memory_space[write_address as usize] = self.registers[reg_index as usize];
         }
         OpcodeResult::Continue
@@ -480,7 +479,7 @@ impl Emulator {
         // at address I
         //I is set to I + X + 1 after operation
         for reg_index in 0..opcode.third_nibble {
-            let read_address = self.address_register - 0x200 + reg_index as u16;
+            let read_address = self.address_register + reg_index as u16;
             self.registers[reg_index as usize] = self.memory_space[read_address as usize];
         }
         OpcodeResult::Continue
@@ -492,10 +491,7 @@ impl Emulator {
         //TODO implement drawing
         println!("NOT IMPLEMENTED lookup sprite for digit");
         // this requires re-working how the memory is done,
-        // we need to provide transparent access to the sub 0x200 address space
         // and we need to load the hex digit sprites in there at startup
-        // this requires resizing the memory pool to the full 4kb (4096 bytes)
-        // and all of the 0x200 translations need to be removed
 
         OpcodeResult::Continue
     }
