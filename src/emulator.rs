@@ -382,7 +382,7 @@ impl Emulator {
         let result = self.registers[opcode.third_nibble as usize]
             .overflowing_sub(self.registers[opcode.second_nibble as usize]);
         self.registers[opcode.third_nibble as usize] = result.0;
-        self.registers[0xF_usize] = result.1 as u8;
+        self.registers[0xF_usize] = !result.1 as u8;
         OpcodeResult::Continue
     }
 
@@ -404,7 +404,7 @@ impl Emulator {
         let result = self.registers[opcode.second_nibble as usize]
             .overflowing_sub(self.registers[opcode.third_nibble as usize]);
         self.registers[opcode.third_nibble as usize] = result.0;
-        self.registers[0xF_usize] = result.1 as u8;
+        self.registers[0xF_usize] = !result.1 as u8;
         OpcodeResult::Continue
     }
 
