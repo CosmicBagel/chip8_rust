@@ -22,6 +22,25 @@ use std::io::prelude::*;
 const MAX_MEMORY: usize = 4096;
 const MAX_STACK: usize = 12;
 
+//built-in hex sprites, taken from http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.5
+const BUILTIN_SPRITES: [u8; 80] = [
+    0xF0, 0x90, 0x90, 0x90, 0xF0, // zero
+    0x20, 0x60, 0x20, 0x20, 0x70, // one
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // two
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // three
+    0x90, 0x90, 0xF0, 0x10, 0x10, // four
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // five
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // six
+    0xF0, 0x10, 0x20, 0x40, 0x40, // seven
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // eight
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // nine
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+];
 #[derive(Copy, Clone)]
 struct Opcode {
     full_opcode: u16,
@@ -75,6 +94,8 @@ impl Emulator {
             pixels_frame_buffer: p,
             end_loop_reached: false,
         };
+        // fill first 80 bytes of memory with out built-in hex digit sprites
+        emu.memory_space[..80].copy_from_slice(&BUILTIN_SPRITES);
         emu.clear_screen();
         emu
     }
@@ -485,13 +506,14 @@ impl Emulator {
         OpcodeResult::Continue
     }
 
-    fn lookup_sprite_for_digit(&mut self, _opcode: Opcode) -> OpcodeResult {
+    fn lookup_sprite_for_digit(&mut self, opcode: Opcode) -> OpcodeResult {
         //0xFX29 Set I to the memory address of the sprite data corresponding to the
         // hexadecimal digit stored in register VX
-        //TODO implement drawing
-        println!("NOT IMPLEMENTED lookup sprite for digit");
-        // this requires re-working how the memory is done,
-        // and we need to load the hex digit sprites in there at startup
+
+        // we have our built-in sprites at the start of the system memory,
+        // they're in order of the hex values (0-F), and each one is 5 bytes big
+        // so we can just use the requested hex sprite as an address multiplier
+        self.address_register = opcode.third_nibble as u16 * 5;
 
         OpcodeResult::Continue
     }
