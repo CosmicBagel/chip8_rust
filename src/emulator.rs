@@ -21,7 +21,6 @@ use winit::dpi::PhysicalSize;
 // 4kb memory, 512bytes reserved for system
 // 4096 - 512 = 3584 max bytes for apps
 const MAX_MEMORY: usize = 4096;
-const MAX_STACK: usize = 12;
 
 // black is the default window fill
 // white is the default pixel fill while initializing
@@ -189,11 +188,6 @@ impl Emulator {
     pub fn load_program(&mut self, file_name: &str) -> usize {
         let mut rom_file = File::open(file_name).unwrap();
         rom_file.read(&mut self.memory_space[0x200..]).unwrap()
-    }
-
-    pub fn inject_program(&mut self, opcodes: &[u8]) {
-        let end = opcodes.len() + 0x200;
-        self.memory_space[0x200..end].copy_from_slice(opcodes);
     }
 
     pub fn pixels_render(&mut self) {
