@@ -9,15 +9,6 @@ use winit::dpi::PhysicalSize;
 // todo timer_counter decremented on side thread dedicated to just decrementing it at regular
 //      interval (we'll just use arc and an atomic integer)
 
-// bug we're not loading in numbers as big endian, not sure how this will affect things,
-//      will probably mostly just affect addresses as they're the only number that exceeds 1 byte
-//      may also affect saving registries to memory and vice versa
-//      might affect drawing, but again, all drawing is within 1 byte :thonking face:
-//      this will likely have to be implemented for the sake of the I register
-//      a final (serious) implication as that the instructions being loaded in all have their
-//      bytes swapped (not sure about this one, but would be hilarious) eg 0xaabb should actually
-//      be processed as 0xbbaa
-
 // 4kb memory, 512bytes reserved for system
 // 4096 - 512 = 3584 max bytes for apps
 const MAX_MEMORY: usize = 4096;
@@ -218,7 +209,7 @@ impl Emulator {
         let right_byte = self.memory_space[pc + 1];
         let opcode: Opcode = (left_byte, right_byte).into();
         if !self.end_loop_reached {
-            print!("{:02x?}{:02x?}, ", opcode.left_byte, opcode.right_byte,);
+            // print!("{:02x?}{:02x?}, ", opcode.left_byte, opcode.right_byte,);
         }
 
         self.execute_instruction(opcode)
@@ -271,7 +262,7 @@ impl Emulator {
     }
 
     // returns desired program counter location
-    pub fn process_opcode(&mut self, opcode: Opcode) -> OpcodeResult {
+    fn process_opcode(&mut self, opcode: Opcode) -> OpcodeResult {
         // NNN refers to 0x0NNN parts of the opcode being processed
 
         // https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set

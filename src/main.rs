@@ -19,19 +19,11 @@ mod emulator;
 use emulator::*;
 
 // when using the c8_test rom, refer to this documentation https://github.com/Skosulor/c8int/blob/master/test/chip8_test.txt
-
 const DEFAULT_ROM: &str = "roms/c8_test.c8";
-// const DEFAULT_ROM: &str = "roms/SQRT Test [Sergey Naydenov, 2010].ch8";
-// const DEFAULT_ROM: &str = "roms/test_opcode.ch8";
-// const DEFAULT_ROM: &str = "roms/Pong.ch8";
-// const DEFAULT_ROM: &str = "roms/Tetris [Fran Dachille, 1991].ch8";
 const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
 const INSTRUCTIONS_PER_CYCLE: u8 = 10;
 
 // general todo
-// todo get windowing up and running with winit
-// todo draw pixel grid with pixels library
-// todo tests!
 // todo implement error handling
 
 /*
@@ -169,6 +161,6 @@ fn init() -> (EventLoop<()>, winit::window::Window, Emulator) {
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
         Pixels::new(64, 32, surface_texture).unwrap()
     };
-    let mut emulator = Emulator::new(pixels);
+    let emulator = Emulator::new(pixels);
     (event_loop, window, emulator)
 }
