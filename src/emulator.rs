@@ -138,6 +138,7 @@ pub struct Emulator {
     pub subroutine_return_pointers: Vec<u16>,
     pub pixels_frame_buffer: Option<Pixels>, // is option to support headless mode (for testing)
     pub end_loop_reached: bool,
+    pub key_states: [bool; 16],
 }
 
 impl Emulator {
@@ -152,6 +153,7 @@ impl Emulator {
             subroutine_return_pointers: Vec::new(),
             pixels_frame_buffer: Some(p),
             end_loop_reached: false,
+            key_states: [false; 16],
         };
         // fill first 80 bytes of memory with out built-in hex digit sprites
         emu.memory_space[..80].copy_from_slice(&BUILTIN_SPRITES);
@@ -170,6 +172,7 @@ impl Emulator {
             subroutine_return_pointers: Vec::new(),
             pixels_frame_buffer: None,
             end_loop_reached: false,
+            key_states: [false; 16],
         };
         // fill first 80 bytes of memory with out built-in hex digit sprites
         emu.memory_space[..80].copy_from_slice(&BUILTIN_SPRITES);

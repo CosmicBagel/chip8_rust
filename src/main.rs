@@ -6,7 +6,7 @@ use std::thread;
 use std::time;
 
 use pixels::{Pixels, SurfaceTexture};
-use winit::event::KeyboardInput;
+use winit::event::{ElementState, KeyboardInput};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -99,7 +99,10 @@ fn main() {
             Event::WindowEvent {
                 event:
                     WindowEvent::KeyboardInput {
-                        input: KeyboardInput { scancode, .. },
+                        input:
+                            KeyboardInput {
+                                scancode, state, ..
+                            },
                         ..
                     },
                 ..
@@ -109,6 +112,7 @@ fn main() {
                     println!("Escape key hit, closing");
                     *control_flow = ControlFlow::Exit;
                 }
+                update_key_states(scancode, state, &mut emulator);
             }
 
             Event::MainEventsCleared => {
@@ -134,6 +138,137 @@ fn main() {
             _ => (),
         }
     });
+}
+
+fn update_key_states(scancode: u32, state: ElementState, emulator: &mut Emulator) {
+    // x key -> 0
+    if scancode == 0x02D {
+        if state == ElementState::Pressed {
+            emulator.key_states[0x0] = true;
+        } else {
+            emulator.key_states[0x0] = false;
+        }
+    }
+    // 1 key -> 1
+    if scancode == 0x002 {
+        if state == ElementState::Pressed {
+            emulator.key_states[0x1] = true;
+        } else {
+            emulator.key_states[0x1] = false;
+        }
+    }
+    // 2 key -> 2
+    if scancode == 0x003 {
+        if state == ElementState::Pressed {
+            emulator.key_states[0x2] = true;
+        } else {
+            emulator.key_states[0x2] = false;
+        }
+    }
+    // 3 key -> 3
+    if scancode == 0x004 {
+        if state == ElementState::Pressed {
+            emulator.key_states[0x3] = true;
+        } else {
+            emulator.key_states[0x3] = false;
+        }
+    }
+    // Q key -> 4
+    if scancode == 0x010 {
+        if state == ElementState::Pressed {
+            emulator.key_states[0x4] = true;
+        } else {
+            emulator.key_states[0x4] = false;
+        }
+    }
+    // W key -> 5
+    if scancode == 0x011 {
+        if state == ElementState::Pressed {
+            emulator.key_states[0x5] = true;
+        } else {
+            emulator.key_states[0x5] = false;
+        }
+    }
+    // E key -> 6
+    if scancode == 0x012 {
+        if state == ElementState::Pressed {
+            emulator.key_states[0x6] = true;
+        } else {
+            emulator.key_states[0x6] = false;
+        }
+    }
+    // A key -> 7
+    if scancode == 0x01E {
+        if state == ElementState::Pressed {
+            emulator.key_states[0x7] = true;
+        } else {
+            emulator.key_states[0x7] = false;
+        }
+    }
+    // S key -> 8
+    if scancode == 0x01F {
+        if state == ElementState::Pressed {
+            emulator.key_states[0x8] = true;
+        } else {
+            emulator.key_states[0x8] = false;
+        }
+    }
+    // D key -> 9
+    if scancode == 0x020 {
+        if state == ElementState::Pressed {
+            emulator.key_states[0x9] = true;
+        } else {
+            emulator.key_states[0x9] = false;
+        }
+    }
+    // Z key -> A
+    if scancode == 0x02C {
+        if state == ElementState::Pressed {
+            emulator.key_states[0xA] = true;
+        } else {
+            emulator.key_states[0xA] = false;
+        }
+    }
+    // C key -> B
+    if scancode == 0x02E {
+        if state == ElementState::Pressed {
+            emulator.key_states[0xB] = true;
+        } else {
+            emulator.key_states[0xB] = false;
+        }
+    }
+    // 4 key -> C
+    if scancode == 0x005 {
+        if state == ElementState::Pressed {
+            emulator.key_states[0xC] = true;
+        } else {
+            emulator.key_states[0xC] = false;
+        }
+    }
+    // R key -> D
+    if scancode == 0x013 {
+        if state == ElementState::Pressed {
+            emulator.key_states[0xD] = true;
+        } else {
+            emulator.key_states[0xD] = false;
+        }
+    }
+    // F key -> E
+    if scancode == 0x021 {
+        if state == ElementState::Pressed {
+            emulator.key_states[0xE] = true;
+        } else {
+            emulator.key_states[0xE] = false;
+        }
+    }
+    // V key -> F
+    if scancode == 0x02F {
+        if state == ElementState::Pressed {
+            emulator.key_states[0xF] = true;
+        } else {
+            emulator.key_states[0xF] = false;
+        }
+    }
 }
 
 fn get_rom_path() -> String {
