@@ -23,6 +23,14 @@ Currently it is functional, but is missing sound, and has some timing bugs.
  ```
  Eg. Pong uses 1 and 4 to move the paddels, on the keyboard this is 1 and Q
 
+## Config
+
+Requires a `chip8_rust_config.toml` file, with a rom path to load eg:
+
+`rom = roms\Pong.ch8`
+
+The release zip includes this, but if you delete it, its simple enough to recreate by hand.
+
 ## Building
 
 Just clone and `cargo run`
