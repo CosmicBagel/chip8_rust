@@ -117,6 +117,7 @@ enum OpcodeResult {
     SkipNext,
     Malformed,
     RequestRedraw,
+    WaitingForKey(u8),
 }
 
 #[derive(PartialEq)]
@@ -139,6 +140,9 @@ pub struct Emulator {
     pub pixels_frame_buffer: Option<Pixels>, // is option to support headless mode (for testing)
     pub end_loop_reached: bool,
     pub key_states: [bool; 16],
+    key_states_last_cycle: [bool; 16],
+    waiting_for_key: bool,
+    reg_waiting_for_key: u8,
 }
 
 impl Emulator {
@@ -154,6 +158,9 @@ impl Emulator {
             pixels_frame_buffer: Some(p),
             end_loop_reached: false,
             key_states: [false; 16],
+            key_states_last_cycle: [false; 16],
+            waiting_for_key: false,
+            reg_waiting_for_key: 0,
         };
         // fill first 80 bytes of memory with out built-in hex digit sprites
         emu.memory_space[..80].copy_from_slice(&BUILTIN_SPRITES);
@@ -173,6 +180,9 @@ impl Emulator {
             pixels_frame_buffer: None,
             end_loop_reached: false,
             key_states: [false; 16],
+            key_states_last_cycle: [false; 16],
+            waiting_for_key: false,
+            reg_waiting_for_key: 0,
         };
         // fill first 80 bytes of memory with out built-in hex digit sprites
         emu.memory_space[..80].copy_from_slice(&BUILTIN_SPRITES);
@@ -219,7 +229,17 @@ impl Emulator {
     }
 
     pub fn execute_instruction(&mut self, opcode: Opcode) -> InstructionResult {
+        if self.waiting_for_key {
+            if self.check_for_pressed_keys(self.reg_waiting_for_key) {
+                self.waiting_for_key = false;
+            } else {
+                self.key_states_last_cycle.copy_from_slice(&self.key_states);
+                return InstructionResult::Working;
+            }
+        }
+
         let opcode_result = self.process_opcode(opcode);
+
         match opcode_result {
             OpcodeResult::Terminate => {
                 println!("Terminating");
@@ -258,9 +278,16 @@ impl Emulator {
                 } else {
                     panic!("Program counter exceeded memory bounds");
                 }
+                self.key_states_last_cycle.copy_from_slice(&self.key_states);
                 return InstructionResult::RedrawRequested;
             }
+            OpcodeResult::WaitingForKey(reg) => {
+                self.waiting_for_key = true;
+                self.reg_waiting_for_key = reg;
+            }
         }
+
+        self.key_states_last_cycle.copy_from_slice(&self.key_states);
         InstructionResult::Working
     }
 
@@ -598,9 +625,21 @@ impl Emulator {
 
     fn wait_for_key_and_store(&mut self, opcode: Opcode) -> OpcodeResult {
         //0xFX0A Wait for a keypress and store the result in register VX
-        //TODO implement input
-        println!("NOT IMPLEMENTED wait for key and store");
-        OpcodeResult::Continue
+        if self.check_for_pressed_keys(opcode.third_nibble) {
+            return OpcodeResult::Continue;
+        }
+
+        OpcodeResult::WaitingForKey(opcode.third_nibble as u8)
+    }
+
+    fn check_for_pressed_keys(&mut self, reg: u8) -> bool {
+        for i in 0..0xF_usize {
+            if self.key_states[i] && !self.key_states_last_cycle[i] {
+                self.registers[reg as usize] = i as u8;
+                return true;
+            }
+        }
+        false
     }
 
     fn skip_next_if_key_is_down(&mut self, opcode: Opcode) -> OpcodeResult {
