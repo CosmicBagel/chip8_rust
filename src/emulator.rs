@@ -643,6 +643,9 @@ impl Emulator {
                     let bit = byte & (1 << bit_index);
                     let pixel_ind =
                         (x_origin + (7 - bit_index) as usize + ((y_origin + row) * 64)) * 4;
+                    if pixel_ind > frame.len() - 1 {
+                        continue;
+                    }
                     let p = &mut frame[pixel_ind..pixel_ind + 4];
 
                     if bit != 0 {
