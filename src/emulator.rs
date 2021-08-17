@@ -596,27 +596,34 @@ impl Emulator {
         OpcodeResult::Continue
     }
 
-    fn wait_for_key_and_store(&mut self, _opcode: Opcode) -> OpcodeResult {
+    fn wait_for_key_and_store(&mut self, opcode: Opcode) -> OpcodeResult {
         //0xFX0A Wait for a keypress and store the result in register VX
         //TODO implement input
         println!("NOT IMPLEMENTED wait for key and store");
         OpcodeResult::Continue
     }
 
-    fn skip_next_if_key_is_down(&mut self, _opcode: Opcode) -> OpcodeResult {
-        //TODO implement input
-        println!("NOT IMPLEMENTED skip next if key is down");
+    fn skip_next_if_key_is_down(&mut self, opcode: Opcode) -> OpcodeResult {
         // 0xEX9E Skip the following instruction if the key corresponding to the hex value
         // currently stored in register VX is pressed
-        OpcodeResult::Continue
+
+        let key = self.registers[opcode.third_nibble as usize] as usize;
+        if self.key_states[key] {
+            OpcodeResult::SkipNext
+        } else {
+            OpcodeResult::Continue
+        }
     }
 
-    fn skip_next_if_key_is_not_down(&mut self, _opcode: Opcode) -> OpcodeResult {
-        //TODO implement input
-        println!("NOT IMPLEMENTED skip next if key is NOT down");
+    fn skip_next_if_key_is_not_down(&mut self, opcode: Opcode) -> OpcodeResult {
         // 0xEXA1 Skip the following instruction if the key corresponding to the hex value
         // currently stored in register VX is not pressed
-        OpcodeResult::SkipNext
+        let key = self.registers[opcode.third_nibble as usize] as usize;
+        if self.key_states[key] {
+            OpcodeResult::Continue
+        } else {
+            OpcodeResult::SkipNext
+        }
     }
 
     fn draw_sprite(&mut self, opcode: Opcode) -> OpcodeResult {
