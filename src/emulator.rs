@@ -459,9 +459,8 @@ impl Emulator {
     }
 
     fn shift_register_right(&mut self, opcode: Opcode) -> OpcodeResult {
-        //0x8XY6 Store the value of register VY shifted right one bit in register VX
-        //Set register VF to the least significant bit prior to the shift
-        //VY is unchanged
+        //0x8XY6
+        //Stores the least significant bit of VX in VF and then shifts VX to the right by 1.[b]
         let val = self.registers[opcode.third_nibble as usize];
         self.registers[0xF] = val & 0x01;
         self.registers[opcode.third_nibble as usize] >>= 1;
@@ -480,13 +479,11 @@ impl Emulator {
     }
 
     fn shift_register_left(&mut self, opcode: Opcode) -> OpcodeResult {
-        //0x8XYE Store the value of register VY shifted left one bit in register VX
-        //Set register VF to the most significant bit prior to the shift
-        //VY is unchanged
-        let val = self.registers[opcode.second_nibble as usize];
-        self.registers[0xF_usize] = val >> 7;
-        self.registers[opcode.third_nibble as usize] =
-            self.registers[opcode.second_nibble as usize] << 1;
+        //0x8XYE
+        //Stores the most significant bit of VX in VF and then shifts VX to the left by 1
+        let val = self.registers[opcode.third_nibble as usize];
+        self.registers[0xF] = val >> 7;
+        self.registers[opcode.third_nibble as usize] <<= 1;
         OpcodeResult::Continue
     }
 
