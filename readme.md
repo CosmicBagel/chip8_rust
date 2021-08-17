@@ -2,7 +2,7 @@
 
 A chip 8 emulator written in rust
 
-It doesn't actually work yet
+Currently it is minimally fuctional, but has bugs and doesn't take user input yet.
 
 ## Thanks to
 - https://github.com/kripod/chip8-roms for providing a nice collection of roms to test with
