@@ -21,7 +21,7 @@ use emulator::*;
 // when using the c8_test rom, refer to this documentation https://github.com/Skosulor/c8int/blob/master/test/chip8_test.txt
 const DEFAULT_ROM: &str = "roms/c8_test.c8";
 const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
-const INSTRUCTIONS_PER_CYCLE: u8 = 15;
+const INSTRUCTIONS_PER_CYCLE: u8 = 10;
 
 // general todo
 // todo implement error handling
