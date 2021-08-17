@@ -644,12 +644,14 @@ impl Emulator {
                 for bit_index in 0..8u8 {
                     let bit = byte & (1 << bit_index);
                     let pixel_ind =
-                        (x_origin + (7 - bit_index) as usize + ((y_origin + row) * 64)) * 4;
-                    if pixel_ind > frame.len() - 1 {
-                        continue;
-                    }
+                        ((x_origin + (7 - bit_index) as usize + ((y_origin + row) * 64)) * 4)
+                            % frame.len();
+                    // if pixel_ind > frame.len() - 1 {
+                    //     continue;
+                    // }
                     let p = &mut frame[pixel_ind..pixel_ind + 4];
 
+                    // we XOR the sprite onto the frame
                     if bit != 0 {
                         //set the pixel
                         if p == SET_COLOUR {
@@ -657,12 +659,6 @@ impl Emulator {
                             p.copy_from_slice(&UNSET_COLOUR);
                         } else {
                             p.copy_from_slice(&SET_COLOUR);
-                        }
-                    } else {
-                        //unset the pixel
-                        if p == SET_COLOUR {
-                            self.registers[0xF] = 0x1;
-                            p.copy_from_slice(&UNSET_COLOUR);
                         }
                     }
                 }
