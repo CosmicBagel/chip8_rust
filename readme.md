@@ -27,7 +27,7 @@ Currently it is functional, but is missing sound, and has some timing bugs.
 
 Just clone and `cargo run`
 
-*Should* work on windows and linux
+*Should* work on windows, linux, and macos
 
 See https://github.com/kripod/chip8-roms for roms to try
 
