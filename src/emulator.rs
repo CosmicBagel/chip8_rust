@@ -668,7 +668,6 @@ impl Emulator {
 
     fn clear_screen(&mut self) -> OpcodeResult {
         //0x00E0 Clear the screen
-        //TODO implement clear screen
 
         if let Some(p_buf) = &mut self.pixels_frame_buffer {
             let frame = p_buf.get_frame();
