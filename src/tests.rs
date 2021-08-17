@@ -183,12 +183,12 @@ fn the_0x8XY4_test() {
 #[test]
 fn the_0x8XY5_test() {
     let mut emu = Emulator::new_headless();
-    emu.registers[0] = 0x01;
+    emu.registers[0] = 0x03;
     emu.registers[1] = 0x01;
 
     // x_reg_plus_y_reg
     emu.execute_instruction(0x8015.into());
-    assert!(emu.registers[0] == 0x00);
+    assert!(emu.registers[0] == 0x02);
     assert!(emu.registers[0xF] == 0x01);
 
     let mut emu = Emulator::new_headless();
@@ -220,4 +220,63 @@ fn the_0x8XY6_test() {
     assert!(emu.registers[0] == 0x7F);
     assert!(emu.registers[0xF] == 0);
     assert!(emu.registers[1] == 0x0);
+}
+
+#[test]
+fn the_0x8XY7_test() {
+    let mut emu = Emulator::new_headless();
+    emu.registers[0] = 0x03;
+    emu.registers[1] = 0x01;
+
+    // x_reg_plus_y_reg
+    emu.execute_instruction(0x8107.into());
+    assert!(emu.registers[1] == 0x02);
+    assert!(emu.registers[0xF] == 0x01);
+
+    let mut emu = Emulator::new_headless();
+    emu.registers[0] = 0x00;
+    emu.registers[1] = 0x01;
+
+    // x_reg_plus_y_reg
+    emu.execute_instruction(0x8107.into());
+    assert!(emu.registers[1] == 0xFF);
+    assert!(emu.registers[0xF] == 0x00);
+}
+
+#[test]
+fn the_0x8XYE_test() {
+    let mut emu = Emulator::new_headless();
+    emu.registers[0] = 0xFF;
+    emu.registers[1] = 0x0;
+
+    emu.execute_instruction(0x801E.into());
+    assert!(emu.registers[0] == 0xFE);
+    assert!(emu.registers[0xF] == 1);
+    assert!(emu.registers[1] == 0x0);
+
+    let mut emu = Emulator::new_headless();
+    emu.registers[0] = 0x7F;
+    emu.registers[1] = 0x0;
+
+    emu.execute_instruction(0x801E.into());
+    assert!(emu.registers[0] == 0xFE);
+    assert!(emu.registers[0xF] == 0);
+    assert!(emu.registers[1] == 0x0);
+}
+
+#[test]
+fn the_0x9XY0_test() {
+    let mut emu = Emulator::new_headless();
+    emu.registers[0] = 0xFF;
+    emu.registers[1] = 0x0;
+
+    emu.execute_instruction(0x9010.into());
+    assert!(emu.program_counter == 0x204);
+
+    let mut emu = Emulator::new_headless();
+    emu.registers[0] = 0xFF;
+    emu.registers[1] = 0xFF;
+
+    emu.execute_instruction(0x9010.into());
+    assert!(emu.program_counter == 0x202);
 }
