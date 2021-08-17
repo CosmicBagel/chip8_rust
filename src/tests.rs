@@ -1,4 +1,4 @@
-use super::*;
+use crate::emulator::{Emulator, InstructionResult};
 
 #[test]
 fn jump_test() {
@@ -56,7 +56,7 @@ fn subroutine_test() {
 }
 
 #[test]
-fn the_0x3XNN_test() {
+fn the_3xnn_test() {
     let mut emu = Emulator::new_headless();
     emu.registers[2] = 0xFF;
     emu.execute_instruction(0x3215.into());
@@ -71,7 +71,7 @@ fn the_0x3XNN_test() {
 }
 
 #[test]
-fn the_0x4XNN_test() {
+fn the_4xnn_test() {
     let mut emu = Emulator::new_headless();
     emu.registers[2] = 0xFF;
     emu.execute_instruction(0x4215.into());
@@ -86,7 +86,7 @@ fn the_0x4XNN_test() {
 }
 
 #[test]
-fn the_0x5XY0_test() {
+fn the_5xy0_test() {
     let mut emu = Emulator::new_headless();
     emu.registers[1] = 0x00;
     emu.registers[2] = 0xFF;
@@ -103,14 +103,14 @@ fn the_0x5XY0_test() {
 }
 
 #[test]
-fn the_0x6XNN_test() {
+fn the_6xnn_test() {
     let mut emu = Emulator::new_headless();
     emu.execute_instruction(0x60FF.into());
     assert!(emu.registers[0] == 0xFF);
 }
 
 #[test]
-fn the_0x7XNN_test() {
+fn the_7xnn_test() {
     let mut emu = Emulator::new_headless();
 
     emu.execute_instruction(0x7001.into());
@@ -121,7 +121,7 @@ fn the_0x7XNN_test() {
 }
 
 #[test]
-fn the_0x8XY0_test() {
+fn the_8xy0_test() {
     let mut emu = Emulator::new_headless();
     emu.registers[0] = 0xFF;
 
@@ -130,7 +130,7 @@ fn the_0x8XY0_test() {
 }
 
 #[test]
-fn the_0x8XY1_test() {
+fn the_8xy1_test() {
     let mut emu = Emulator::new_headless();
     emu.registers[0] = 0x1E;
     emu.registers[1] = 0xF0;
@@ -140,7 +140,7 @@ fn the_0x8XY1_test() {
 }
 
 #[test]
-fn the_0x8XY2_test() {
+fn the_8xy2_test() {
     let mut emu = Emulator::new_headless();
     emu.registers[0] = 0x1E;
     emu.registers[1] = 0xF0;
@@ -150,7 +150,7 @@ fn the_0x8XY2_test() {
 }
 
 #[test]
-fn the_0x8XY3_test() {
+fn the_8xy3_test() {
     let mut emu = Emulator::new_headless();
     emu.registers[0] = 0x1E;
     emu.registers[1] = 0xF0;
@@ -160,7 +160,7 @@ fn the_0x8XY3_test() {
 }
 
 #[test]
-fn the_0x8XY4_test() {
+fn the_8xy4_test() {
     let mut emu = Emulator::new_headless();
     emu.registers[0] = 0x00;
     emu.registers[1] = 0x01;
@@ -181,7 +181,7 @@ fn the_0x8XY4_test() {
 }
 
 #[test]
-fn the_0x8XY5_test() {
+fn the_8xy5_test() {
     let mut emu = Emulator::new_headless();
     emu.registers[0] = 0x03;
     emu.registers[1] = 0x01;
@@ -202,7 +202,7 @@ fn the_0x8XY5_test() {
 }
 
 #[test]
-fn the_0x8XY6_test() {
+fn the_8xy6_test() {
     let mut emu = Emulator::new_headless();
     emu.registers[0] = 0xFF;
     emu.registers[1] = 0x0;
@@ -223,7 +223,7 @@ fn the_0x8XY6_test() {
 }
 
 #[test]
-fn the_0x8XY7_test() {
+fn the_8xy7_test() {
     let mut emu = Emulator::new_headless();
     emu.registers[0] = 0x03;
     emu.registers[1] = 0x01;
@@ -244,7 +244,7 @@ fn the_0x8XY7_test() {
 }
 
 #[test]
-fn the_0x8XYE_test() {
+fn the_8xye_test() {
     let mut emu = Emulator::new_headless();
     emu.registers[0] = 0xFF;
     emu.registers[1] = 0x0;
@@ -265,7 +265,7 @@ fn the_0x8XYE_test() {
 }
 
 #[test]
-fn the_0x9XY0_test() {
+fn the_9xy0_test() {
     let mut emu = Emulator::new_headless();
     emu.registers[0] = 0xFF;
     emu.registers[1] = 0x0;
@@ -282,7 +282,7 @@ fn the_0x9XY0_test() {
 }
 
 #[test]
-fn the_0xANNN_test() {
+fn the_annn_test() {
     let mut emu = Emulator::new_headless();
     assert!(emu.address_register == 0x0);
     emu.execute_instruction(0xA250.into());
@@ -290,7 +290,7 @@ fn the_0xANNN_test() {
 }
 
 #[test]
-fn the_0xBNNN_test() {
+fn the_bnnn_test() {
     let mut emu = Emulator::new_headless();
     assert!(emu.program_counter == 0x200);
     emu.registers[0] = 0x0;
@@ -307,7 +307,7 @@ fn the_0xBNNN_test() {
 }
 
 #[test]
-fn the_0xCXNN_test() {
+fn the_cxnn_test() {
     //test rng (can sometimes fail)
     let mut emu = Emulator::new_headless();
     assert!(emu.registers[0] == 0x0);
@@ -322,7 +322,7 @@ fn the_0xCXNN_test() {
 }
 
 #[test]
-fn the_0xFX07_test() {
+fn the_fx07_test() {
     let mut emu = Emulator::new_headless();
     emu.timer_counter = 30;
 
@@ -332,7 +332,7 @@ fn the_0xFX07_test() {
 }
 
 #[test]
-fn the_0xFX15_test() {
+fn the_f315_test() {
     let mut emu = Emulator::new_headless();
     assert!(emu.timer_counter == 0);
 
@@ -342,7 +342,7 @@ fn the_0xFX15_test() {
 }
 
 #[test]
-fn the_0xFX18_test() {
+fn the_fx18_test() {
     let mut emu = Emulator::new_headless();
     assert!(emu.sound_counter == 0);
 
@@ -352,7 +352,7 @@ fn the_0xFX18_test() {
 }
 
 #[test]
-fn the_0xFX1E_test() {
+fn the_fx1e_test() {
     // typical add
     let mut emu = Emulator::new_headless();
     assert!(emu.address_register == 0);
@@ -369,7 +369,7 @@ fn the_0xFX1E_test() {
 }
 
 #[test]
-fn the_0xFX33_test() {
+fn the_fx33_test() {
     let mut emu = Emulator::new_headless();
     emu.address_register = 0x205;
     emu.registers[3] = 223;
@@ -406,6 +406,7 @@ fn the_fx55_test() {
     for i in 0..0xF {
         assert!(emu.memory_space[0x500 + i] == i as u8);
     }
+    assert!(emu.address_register == 0x500);
 }
 
 #[test]
@@ -419,4 +420,5 @@ fn the_fx65_test() {
     for i in 0..0xF {
         assert!(emu.registers[i] == i as u8);
     }
+    assert!(emu.address_register == 0x500);
 }

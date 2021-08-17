@@ -569,26 +569,26 @@ impl Emulator {
     }
 
     fn store_registers_to_address(&mut self, opcode: Opcode) -> OpcodeResult {
-        //0xFX55 Store the values of registers V0 to VX inclusive in memory starting at
-        // address I
-        //I is set to I + X + 1 after operation
+        //0xFX55
+        //Stores V0 to VX (including VX) in memory starting at address I. The offset from I is
+        //increased by 1 for each value written, but I itself is left unmodified.
         for reg_index in 0..(opcode.third_nibble + 1) {
             let write_address = self.address_register + reg_index as u16;
             self.memory_space[write_address as usize] = self.registers[reg_index as usize];
         }
-        self.address_register += opcode.third_nibble as u16 + 1;
+        // self.address_register += opcode.third_nibble as u16 + 1;
         OpcodeResult::Continue
     }
 
     fn load_registers_from_address(&mut self, opcode: Opcode) -> OpcodeResult {
-        //0xFX65 Fill registers V0 to VX inclusive with the values stored in memory starting
-        // at address I
-        //I is set to I + X + 1 after operation
+        //0xFX65
+        //Fills V0 to VX (including VX) with values from memory starting at address I. The offset
+        //from I is increased by 1 for each value written, but I itself is left unmodified.
         for reg_index in 0..(opcode.third_nibble + 1) {
             let read_address = self.address_register + reg_index as u16;
             self.registers[reg_index as usize] = self.memory_space[read_address as usize];
         }
-        self.address_register += opcode.third_nibble as u16 + 1;
+        // self.address_register += opcode.third_nibble as u16 + 1;
         OpcodeResult::Continue
     }
 
