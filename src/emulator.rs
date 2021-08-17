@@ -232,10 +232,19 @@ impl Emulator {
         if self.waiting_for_key {
             if self.check_for_pressed_keys(self.reg_waiting_for_key) {
                 self.waiting_for_key = false;
+
+                //we've finished the wait_for_key_and_store instruction,
+                //so we need to advance to program counter and return
+                //otherwise the instruction double fires
+                if self.program_counter + 2 < self.memory_space.len() as u16 - 1 {
+                    self.program_counter += 2;
+                } else {
+                    panic!("Program counter exceeded memory bounds");
+                }
             } else {
                 self.key_states_last_cycle.copy_from_slice(&self.key_states);
-                return InstructionResult::Working;
             }
+            return InstructionResult::Working;
         }
 
         let opcode_result = self.process_opcode(opcode);
@@ -625,6 +634,7 @@ impl Emulator {
 
     fn wait_for_key_and_store(&mut self, opcode: Opcode) -> OpcodeResult {
         //0xFX0A Wait for a keypress and store the result in register VX
+        println!("hit the wait and store");
         if self.check_for_pressed_keys(opcode.third_nibble) {
             return OpcodeResult::Continue;
         }
