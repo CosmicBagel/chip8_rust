@@ -617,6 +617,17 @@ impl Emulator {
         //15 bytes, the height
         //we jump down to the next line of pixels at the end of each byte
 
+        //http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
+        //The interpreter reads n bytes from memory, starting at the address stored in I. These
+        //bytes are then displayed as sprites on screen at coordinates (Vx, Vy). Sprites are XORed
+        //onto the existing screen. If this causes any pixels to be erased, VF is set to 1,
+        //otherwise it is set to 0. If the sprite is positioned so part of it is outside the
+        //coordinates of the display, it wraps around to the opposite side of the screen. See
+        //instruction 8xy3 for more information on XOR, and section 2.4, Display, for more
+        //information on the Chip-8 screen and sprites.
+
+        //todo wrap the sprite if it exceeds bounds in any direction
+
         if let Some(buffer) = &mut self.pixels_frame_buffer {
             let frame = buffer.get_frame();
 
@@ -641,7 +652,12 @@ impl Emulator {
 
                     if bit != 0 {
                         //set the pixel
-                        p.copy_from_slice(&SET_COLOUR);
+                        if p == SET_COLOUR {
+                            self.registers[0xF] = 0x1;
+                            p.copy_from_slice(&UNSET_COLOUR);
+                        } else {
+                            p.copy_from_slice(&SET_COLOUR);
+                        }
                     } else {
                         //unset the pixel
                         if p == SET_COLOUR {
