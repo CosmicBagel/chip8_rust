@@ -1,6 +1,6 @@
 [package]
 name = "chip8_rust"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Samuel Whiteley <sam@cosmicbagel.com>"]
 edition = "2018"
 
@@ -13,3 +13,6 @@ lto = true
 rand = "0.8.4"
 winit = "0.25.0"
 pixels = "0.5.0"
+toml = "0.5"
+serde = "1.0.127"
+serde_derive = "1.0.127"

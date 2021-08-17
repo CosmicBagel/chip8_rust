@@ -1,5 +1,6 @@
 mod tests;
 
+use std::fs::File;
 use std::io::{prelude::*, stdout};
 use std::thread;
 use std::time;
@@ -12,13 +13,18 @@ use winit::{
     window::WindowBuilder,
 };
 
+use serde_derive::Deserialize;
+
 mod emulator;
 use emulator::*;
 
 // when using the c8_test rom, refer to this documentation https://github.com/Skosulor/c8int/blob/master/test/chip8_test.txt
 
 const DEFAULT_ROM: &str = "roms/c8_test.c8";
+// const DEFAULT_ROM: &str = "roms/SQRT Test [Sergey Naydenov, 2010].ch8";
 // const DEFAULT_ROM: &str = "roms/test_opcode.ch8";
+// const DEFAULT_ROM: &str = "roms/Pong.ch8";
+// const DEFAULT_ROM: &str = "roms/Tetris [Fran Dachille, 1991].ch8";
 const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
 const INSTRUCTIONS_PER_CYCLE: u8 = 10;
 
@@ -56,6 +62,11 @@ const INSTRUCTIONS_PER_CYCLE: u8 = 10;
     bottom right 3F, 1F
 */
 
+#[derive(Debug, Deserialize)]
+struct Config {
+    rom: Option<String>,
+}
+
 fn main() {
     // based on 4kb variant (hence 3215 bytes) (wait shouldn't it be 3583???)
     // all memory accesses will be in big endian
@@ -73,8 +84,8 @@ fn main() {
     // error on any address read/write below 0x200
 
     let (event_loop, window, mut emulator) = init();
-
-    let bytes_read = emulator.load_program(DEFAULT_ROM);
+    let rom_path = get_rom_path();
+    let bytes_read = emulator.load_program(&rom_path);
     println!("Loaded program, bytes {}", bytes_read);
     window.request_redraw();
 
@@ -131,6 +142,20 @@ fn main() {
             _ => (),
         }
     });
+}
+
+fn get_rom_path() -> String {
+    let mut file_buffer = String::new();
+    if let Ok(mut config_file) = File::open("chip8_rust_config.toml") {
+        config_file.read_to_string(&mut file_buffer).unwrap();
+    }
+    let decoded_toml: Config = toml::from_str(&file_buffer).unwrap();
+    println!("{:#?}", decoded_toml);
+    let mut rom_path = DEFAULT_ROM.to_string();
+    if let Some(path) = decoded_toml.rom {
+        rom_path = path;
+    }
+    rom_path
 }
 
 fn init() -> (EventLoop<()>, winit::window::Window, Emulator) {
