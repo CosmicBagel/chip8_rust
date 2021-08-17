@@ -308,7 +308,11 @@ impl Emulator {
             0xB => self.jump_with_offset(opcode),
             0xC => self.generate_rnd_num(opcode),
             0xD => self.draw_sprite(opcode),
-            0xE => self.skip_next_if_key_is_down(opcode),
+            0xE => match opcode.right_byte {
+                0x9E => self.skip_next_if_key_is_down(opcode),
+                0xA1 => self.skip_next_if_key_is_not_down(opcode),
+                _ => OpcodeResult::Malformed,
+            },
             0xF => match opcode.right_byte {
                 0x07 => self.load_delay_counter_value(opcode),
                 0x0A => self.wait_for_key_and_store(opcode),
@@ -601,10 +605,15 @@ impl Emulator {
         println!("NOT IMPLEMENTED skip next if key is down");
         // 0xEX9E Skip the following instruction if the key corresponding to the hex value
         // currently stored in register VX is pressed
+        OpcodeResult::Continue
+    }
 
+    fn skip_next_if_key_is_not_down(&mut self, _opcode: Opcode) -> OpcodeResult {
+        //TODO implement input
+        println!("NOT IMPLEMENTED skip next if key is NOT down");
         // 0xEXA1 Skip the following instruction if the key corresponding to the hex value
         // currently stored in register VX is not pressed
-        OpcodeResult::Continue
+        OpcodeResult::SkipNext
     }
 
     fn draw_sprite(&mut self, opcode: Opcode) -> OpcodeResult {
