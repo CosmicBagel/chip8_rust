@@ -462,10 +462,9 @@ impl Emulator {
         //0x8XY6 Store the value of register VY shifted right one bit in register VX
         //Set register VF to the least significant bit prior to the shift
         //VY is unchanged
-        let val = self.registers[opcode.second_nibble as usize];
-        self.registers[0xF_usize] = val & 0xFE;
-        self.registers[opcode.third_nibble as usize] =
-            self.registers[opcode.second_nibble as usize] >> 1;
+        let val = self.registers[opcode.third_nibble as usize];
+        self.registers[0xF] = val & 0x01;
+        self.registers[opcode.third_nibble as usize] >>= 1;
         OpcodeResult::Continue
     }
 
