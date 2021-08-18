@@ -5,7 +5,7 @@ use std::io::{prelude::*, stdout};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread;
-use std::time::{self};
+use std::time::{self, Duration};
 
 use kira::arrangement::{Arrangement, LoopArrangementSettings};
 use kira::instance::{InstanceLoopStart, InstanceSettings, StopInstanceSettings};
@@ -126,7 +126,7 @@ fn main() {
             }
             //we yield to keep this thread well behaved in the OS's eyes
             //this should actually help keep it more responsive on a normal system
-            thread::yield_now();
+            thread::sleep(Duration::from_millis(16));
         }
     });
 
