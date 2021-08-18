@@ -2,8 +2,6 @@
 
 A chip 8 emulator written in rust
 
-Currently it is functional, but is missing sound, and has some timing bugs.
-
 ## Thanks to
 - https://github.com/kripod/chip8-roms for providing a nice collection of roms to test with
 - http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.5 solid technical reference I used
@@ -28,6 +26,10 @@ Currently it is functional, but is missing sound, and has some timing bugs.
 Requires a `chip8_rust_config.toml` file, with a rom path to load eg:
 
 `rom = roms\Pong.ch8`
+
+Also configuratble:
+`volume = 0.3`
+`instructions_per_cycle = 10`
 
 The release zip includes this, but if you delete it, its simple enough to recreate by hand.
 
