@@ -2,9 +2,15 @@ mod tests;
 
 use std::fs::File;
 use std::io::{prelude::*, stdout};
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::thread;
-use std::time;
+use std::time::{self};
 
+use kira::arrangement::{Arrangement, LoopArrangementSettings};
+use kira::instance::{InstanceLoopStart, InstanceSettings, StopInstanceSettings};
+use kira::manager::{AudioManager, AudioManagerSettings};
+use kira::sound::SoundSettings;
 use pixels::{Pixels, SurfaceTexture};
 use winit::event::{ElementState, KeyboardInput};
 use winit::{
@@ -80,6 +86,46 @@ fn main() {
     let bytes_read = emulator.load_program(&rom_path);
     println!("Loaded program, bytes {}", bytes_read);
     window.request_redraw();
+
+    // putting the audio play / stop on its own thread so its not
+    // affected by the emulation processing
+    let sound_counter = Arc::clone(&emulator.sound_counter);
+    thread::spawn(move || {
+        let mut audio_manager = AudioManager::new(AudioManagerSettings::default()).unwrap();
+        let sound_handle = audio_manager
+            .load_sound("beep2.wav", SoundSettings::new())
+            .unwrap();
+        let mut arrangement_handle = audio_manager
+            .add_arrangement(Arrangement::new_loop(
+                &sound_handle,
+                LoopArrangementSettings::default(),
+            ))
+            .unwrap();
+        let mut is_beep_playing = false;
+
+        // beep is loud af, so we turn that shit down
+        let play_instance_settings = InstanceSettings {
+            volume: 0.3.into(),
+            ..InstanceSettings::default()
+        };
+
+        loop {
+            let counter_val = sound_counter.load(Ordering::Acquire);
+            if !is_beep_playing && counter_val > 0 {
+                is_beep_playing = true;
+                arrangement_handle.play(play_instance_settings).unwrap();
+            }
+            if is_beep_playing && counter_val == 0 {
+                is_beep_playing = false;
+                arrangement_handle
+                    .stop(StopInstanceSettings::default())
+                    .unwrap();
+            }
+            //we yield to keep this thread well behaved in the OS's eyes
+            //this should actually help keep it more responsive on a normal system
+            thread::yield_now();
+        }
+    });
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;

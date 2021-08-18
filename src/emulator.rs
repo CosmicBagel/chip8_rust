@@ -2,6 +2,10 @@ use pixels::Pixels;
 use rand::random;
 use std::fs::File;
 use std::io::prelude::*;
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 use winit::dpi::PhysicalSize;
 
 //refactor todo list
@@ -133,8 +137,8 @@ pub struct Emulator {
     // its better to explicitly say u16 as usize can technically be as small as u8
     pub address_register: u16,
     pub memory_space: [u8; MAX_MEMORY],
-    pub timer_counter: u8,
-    pub sound_counter: u8,
+    pub timer_counter: Arc<AtomicU8>,
+    pub sound_counter: Arc<AtomicU8>,
     pub program_counter: u16,
     pub subroutine_return_pointers: Vec<u16>,
     pub pixels_frame_buffer: Option<Pixels>, // is option to support headless mode (for testing)
@@ -151,8 +155,8 @@ impl Emulator {
             registers: [0_u8; 16],
             address_register: 0_u16,
             memory_space: [0_u8; MAX_MEMORY],
-            timer_counter: 0_u8,
-            sound_counter: 0_u8,
+            timer_counter: Arc::new(AtomicU8::new(0)),
+            sound_counter: Arc::new(AtomicU8::new(0)),
             program_counter: 0x200_u16,
             subroutine_return_pointers: Vec::new(),
             pixels_frame_buffer: Some(p),
@@ -165,6 +169,7 @@ impl Emulator {
         // fill first 80 bytes of memory with out built-in hex digit sprites
         emu.memory_space[..80].copy_from_slice(&BUILTIN_SPRITES);
         emu.clear_screen();
+        start_timer_thread(&emu);
         emu
     }
 
@@ -173,8 +178,8 @@ impl Emulator {
             registers: [0_u8; 16],
             address_register: 0_u16,
             memory_space: [0_u8; MAX_MEMORY],
-            timer_counter: 0_u8,
-            sound_counter: 0_u8,
+            timer_counter: Arc::new(AtomicU8::new(0)),
+            sound_counter: Arc::new(AtomicU8::new(0)),
             program_counter: 0x200_u16,
             subroutine_return_pointers: Vec::new(),
             pixels_frame_buffer: None,
@@ -186,6 +191,7 @@ impl Emulator {
         };
         // fill first 80 bytes of memory with out built-in hex digit sprites
         emu.memory_space[..80].copy_from_slice(&BUILTIN_SPRITES);
+        start_timer_thread(&emu);
         emu
     }
 
@@ -206,15 +212,7 @@ impl Emulator {
         }
     }
 
-    pub fn update_time_counters(&mut self) {
-        // since we're sleep for 16 ms per cycle, this will very roughly approximate 60hz
-        if self.timer_counter > 0 {
-            self.timer_counter -= 1;
-        }
-        if self.sound_counter > 0 {
-            self.sound_counter -= 1;
-        }
-    }
+    pub fn update_time_counters(&mut self) {}
 
     pub fn execute_next_instruction(&mut self) -> InstructionResult {
         let pc = self.program_counter as usize;
@@ -552,19 +550,25 @@ impl Emulator {
 
     fn load_delay_counter_value(&mut self, opcode: Opcode) -> OpcodeResult {
         //0xFX07 Store the current value of the delay timer in register VX
-        self.registers[opcode.third_nibble as usize] = self.timer_counter;
+        self.registers[opcode.third_nibble as usize] = self.timer_counter.load(Ordering::Acquire);
         OpcodeResult::Continue
     }
 
     fn set_delay_counter(&mut self, opcode: Opcode) -> OpcodeResult {
         //0xFX15 Set the delay timer to the value of register VX
-        self.timer_counter = self.registers[opcode.third_nibble as usize];
+        self.timer_counter.store(
+            self.registers[opcode.third_nibble as usize],
+            Ordering::Release,
+        );
         OpcodeResult::Continue
     }
 
     fn set_sound_counter(&mut self, opcode: Opcode) -> OpcodeResult {
         //0xFX18 Set the sound timer to the value of register VX
-        self.sound_counter = self.registers[opcode.third_nibble as usize];
+        self.sound_counter.store(
+            self.registers[opcode.third_nibble as usize],
+            Ordering::Release,
+        );
         OpcodeResult::Continue
     }
 
@@ -758,4 +762,27 @@ impl Emulator {
         }
         OpcodeResult::RequestRedraw
     }
+}
+
+fn start_timer_thread(emu: &Emulator) {
+    let timer_counter = Arc::clone(&emu.timer_counter);
+    let sound_counter = Arc::clone(&emu.sound_counter);
+    thread::spawn(move || loop {
+        // since we're sleep for 16 ms per cycle, this will very roughly approximate 60hz
+        let timer_val = timer_counter.load(Ordering::Acquire);
+        if timer_val > 0 {
+            timer_counter.store(timer_val - 1, Ordering::Release);
+            // timer_counter.compare_exchange(timer_val, timer_val -1,
+            //     Ordering::Relaxed,
+            //     Ordering::Relaxed);
+        }
+        let sound_val = sound_counter.load(Ordering::Acquire);
+        if sound_val > 0 {
+            sound_counter.store(sound_val - 1, Ordering::Release);
+            // sound_counter.compare_exchange(sound_val, sound_val -1,
+            //     Ordering::Relaxed,
+            //     Ordering::Relaxed);
+        }
+        thread::sleep(Duration::from_millis(16));
+    });
 }

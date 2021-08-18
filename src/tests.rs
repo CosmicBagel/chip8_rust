@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use crate::emulator::{Emulator, InstructionResult};
 
 #[test]
@@ -324,7 +326,7 @@ fn the_cxnn_test() {
 #[test]
 fn the_fx07_test() {
     let mut emu = Emulator::new_headless();
-    emu.timer_counter = 30;
+    emu.timer_counter.store(30, Ordering::Release);
 
     emu.registers[3] = 0;
     emu.execute_instruction(0xF307.into());
@@ -334,21 +336,21 @@ fn the_fx07_test() {
 #[test]
 fn the_f315_test() {
     let mut emu = Emulator::new_headless();
-    assert!(emu.timer_counter == 0);
+    assert!(emu.timer_counter.load(Ordering::Acquire) == 0);
 
     emu.registers[3] = 30;
     emu.execute_instruction(0xF315.into());
-    assert!(emu.timer_counter == 30);
+    assert!(emu.timer_counter.load(Ordering::Acquire) == 30);
 }
 
 #[test]
 fn the_fx18_test() {
     let mut emu = Emulator::new_headless();
-    assert!(emu.sound_counter == 0);
+    assert!(emu.sound_counter.load(Ordering::Acquire) == 0);
 
     emu.registers[3] = 30;
     emu.execute_instruction(0xF318.into());
-    assert!(emu.sound_counter == 30);
+    assert!(emu.sound_counter.load(Ordering::Acquire) == 30);
 }
 
 #[test]
