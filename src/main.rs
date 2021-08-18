@@ -26,9 +26,10 @@ use emulator::*;
 
 // when using the c8_test rom, refer to this documentation https://github.com/Skosulor/c8int/blob/master/test/chip8_test.txt
 const DEFAULT_ROM: &str = "roms/c8_test.c8";
-const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
-const INSTRUCTIONS_PER_CYCLE: u8 = 10;
+const DEFAULT_INSTRUCTIONS_PER_CYCLE: u8 = 10;
+const DEFAULT_BEEP_VOLUME: f64 = 0.3;
 
+const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
 // general todo
 // todo implement error handling
 
@@ -63,6 +64,8 @@ const INSTRUCTIONS_PER_CYCLE: u8 = 10;
 #[derive(Debug, Deserialize)]
 struct Config {
     rom: Option<String>,
+    instructions_per_cycle: Option<u8>,
+    beep_volume: Option<f64>,
 }
 
 fn main() {
@@ -82,7 +85,7 @@ fn main() {
     // error on any address read/write below 0x200
 
     let (event_loop, window, mut emulator) = init();
-    let rom_path = get_rom_path();
+    let (rom_path, instructions_per_cycle, volume) = get_config();
     let bytes_read = emulator.load_program(&rom_path);
     println!("Loaded program, bytes {}", bytes_read);
     window.request_redraw();
@@ -105,7 +108,7 @@ fn main() {
 
         // beep is loud af, so we turn that shit down
         let play_instance_settings = InstanceSettings {
-            volume: 0.3.into(),
+            volume: volume.into(),
             ..InstanceSettings::default()
         };
 
@@ -163,7 +166,7 @@ fn main() {
 
             Event::MainEventsCleared => {
                 emulator.update_time_counters();
-                for _ in 1..INSTRUCTIONS_PER_CYCLE {
+                for _ in 1..instructions_per_cycle {
                     match emulator.execute_next_instruction() {
                         InstructionResult::Terminated => {
                             println!("Emulator self terminating");
@@ -317,18 +320,19 @@ fn update_key_states(scancode: u32, state: ElementState, emulator: &mut Emulator
     }
 }
 
-fn get_rom_path() -> String {
+fn get_config() -> (String, u8, f64) {
     let mut file_buffer = String::new();
     if let Ok(mut config_file) = File::open("chip8_rust_config.toml") {
         config_file.read_to_string(&mut file_buffer).unwrap();
     }
     let decoded_toml: Config = toml::from_str(&file_buffer).unwrap();
     println!("{:#?}", decoded_toml);
-    let mut rom_path = DEFAULT_ROM.to_string();
-    if let Some(path) = decoded_toml.rom {
-        rom_path = path;
-    }
-    rom_path
+    let vol = decoded_toml.beep_volume.unwrap_or(DEFAULT_BEEP_VOLUME);
+    let rom_path = decoded_toml.rom.unwrap_or(DEFAULT_ROM.to_string());
+    let instructions = decoded_toml
+        .instructions_per_cycle
+        .unwrap_or(DEFAULT_INSTRUCTIONS_PER_CYCLE);
+    (rom_path, instructions, vol)
 }
 
 fn init() -> (EventLoop<()>, winit::window::Window, Emulator) {

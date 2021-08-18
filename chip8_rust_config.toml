@@ -1,1 +1,2 @@
-rom = "roms/Pong.ch8"
+rom = "roms/Pong.ch8"instructions_per_cycle = 10
+beep_volume = 0.3
