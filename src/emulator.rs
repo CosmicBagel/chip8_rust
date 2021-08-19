@@ -550,7 +550,7 @@ impl Emulator {
 
     fn load_delay_counter_value(&mut self, opcode: Opcode) -> OpcodeResult {
         //0xFX07 Store the current value of the delay timer in register VX
-        self.registers[opcode.third_nibble as usize] = self.timer_counter.load(Ordering::Acquire);
+        self.registers[opcode.third_nibble as usize] = self.timer_counter.load(Ordering::Relaxed);
         OpcodeResult::Continue
     }
 
@@ -558,7 +558,7 @@ impl Emulator {
         //0xFX15 Set the delay timer to the value of register VX
         self.timer_counter.store(
             self.registers[opcode.third_nibble as usize],
-            Ordering::Release,
+            Ordering::Relaxed,
         );
         OpcodeResult::Continue
     }
@@ -567,7 +567,7 @@ impl Emulator {
         //0xFX18 Set the sound timer to the value of register VX
         self.sound_counter.store(
             self.registers[opcode.third_nibble as usize],
-            Ordering::Release,
+            Ordering::Relaxed,
         );
         OpcodeResult::Continue
     }
@@ -765,23 +765,32 @@ impl Emulator {
 }
 
 fn start_timer_thread(emu: &Emulator) {
+    #[allow(unused_must_use)]
     let timer_counter = Arc::clone(&emu.timer_counter);
     let sound_counter = Arc::clone(&emu.sound_counter);
     thread::spawn(move || loop {
         // since we're sleep for 16 ms per cycle, this will very roughly approximate 60hz
         let timer_val = timer_counter.load(Ordering::Acquire);
+        // don't care if this errors, it just means the emulator set the number, so we'll
+        // just drop trying to decrement the value
+        // it is possible that it was set to a higher number, but also possible that it was set
+        // to zero, so we can't assume it's safe to decrement
         if timer_val > 0 {
-            timer_counter.store(timer_val - 1, Ordering::Release);
-            // timer_counter.compare_exchange(timer_val, timer_val -1,
-            //     Ordering::Relaxed,
-            //     Ordering::Relaxed);
+            let _ = timer_counter.compare_exchange(
+                timer_val,
+                timer_val - 1,
+                Ordering::AcqRel,
+                Ordering::Relaxed,
+            );
         }
         let sound_val = sound_counter.load(Ordering::Acquire);
         if sound_val > 0 {
-            sound_counter.store(sound_val - 1, Ordering::Release);
-            // sound_counter.compare_exchange(sound_val, sound_val -1,
-            //     Ordering::Relaxed,
-            //     Ordering::Relaxed);
+            let _ = sound_counter.compare_exchange(
+                sound_val,
+                sound_val - 1,
+                Ordering::AcqRel,
+                Ordering::Relaxed,
+            );
         }
         thread::sleep(Duration::from_millis(16));
     });

@@ -113,7 +113,7 @@ fn main() {
         };
 
         loop {
-            let counter_val = sound_counter.load(Ordering::Acquire);
+            let counter_val = sound_counter.load(Ordering::Relaxed);
             if !is_beep_playing && counter_val > 0 {
                 is_beep_playing = true;
                 arrangement_handle.play(play_instance_settings).unwrap();
