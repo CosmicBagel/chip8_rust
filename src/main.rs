@@ -29,7 +29,7 @@ const DEFAULT_ROM: &str = "roms/c8_test.c8";
 const DEFAULT_INSTRUCTIONS_PER_CYCLE: u8 = 10;
 const DEFAULT_BEEP_VOLUME: f64 = 0.3;
 
-const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(16);
+const CYCLE_SLEEP_DURATION: time::Duration = time::Duration::from_millis(10);
 // general todo
 // todo implement error handling
 
@@ -126,7 +126,8 @@ fn main() {
             }
             //we yield to keep this thread well behaved in the OS's eyes
             //this should actually help keep it more responsive on a normal system
-            thread::sleep(Duration::from_millis(16));
+            //also lets the cpu chill way more without meaningfully affect performance
+            thread::sleep(Duration::from_millis(1));
         }
     });
 
